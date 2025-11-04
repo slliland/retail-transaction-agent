@@ -1,0 +1,12 @@
+# Frontend Environment Variables
+
+# Path to your retail data parquet file (optional)
+# If not set, will look for retail_data.parquet or sample_retail_data.parquet in backend directory
+RETAIL_DATA_PATH=/path/to/your/retail_data.parquet
+
+# Supabase Configuration (for user authentication)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Backend Configuration
+NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
