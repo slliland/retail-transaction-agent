@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ComposedChart, Line, Legend, ReferenceArea, BoxPlot, LineChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ComposedChart, Line, Legend, ReferenceArea, LineChart } from 'recharts';
 import { ChevronLeft, ChevronRight, DollarSign, TrendingUp, Users, ShoppingCart, Package } from 'lucide-react';
 import TopNav from '../../components/TopNav';
 import Sidebar from '../../components/Sidebar';
