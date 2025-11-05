@@ -86,12 +86,16 @@ export async function POST(request: NextRequest) {
 
       const data = await response.json();
       
+      console.log('🔍 Backend response data:', JSON.stringify(data, null, 2));
+      console.log('🔍 Progress steps from backend:', data.progress_steps);
+      
       return NextResponse.json({
         response: data.answer,
         contextSources: data.sources?.length || 0,
         validation: {},
         timestamp: new Date().toISOString(),
-        progressSteps: data.progress_steps || []
+        progressSteps: data.progress_steps || [],
+        progress_steps: data.progress_steps || [] // Add both camelCase and snake_case
       });
 
     } catch (backendError) {

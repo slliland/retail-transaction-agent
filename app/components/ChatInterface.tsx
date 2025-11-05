@@ -122,6 +122,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
   const [welcomeQuestions, setWelcomeQuestions] = useState<string[]>([]);
   const [loadingWelcomeQuestions, setLoadingWelcomeQuestions] = useState(false);
   const [loadingInChatSuggestions, setLoadingInChatSuggestions] = useState(false); // Loading state for in-chat suggestions
+  const [processingSteps, setProcessingSteps] = useState<string[]>([]); // Processing steps from backend
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const skipNextInitRef = useRef<boolean>(false);
@@ -431,9 +432,16 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
     };
     
     setMessages((prev) => [...prev, assistantMessage]);
-    // (steps removed)
+    
+    // Initialize processing steps with generic loading message
+    setProcessingSteps(['Connecting to backend...']);
 
     try {
+      // Show "analyzing" step while waiting for response
+      const analyzeTimer = setTimeout(() => {
+        setProcessingSteps(['Connecting to backend...', 'Analyzing your query...']);
+      }, 500);
+
       // Prepare request with files if any
       let response;
       if (filesToSend.length > 0) {
@@ -463,7 +471,35 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         });
       }
 
-      // (steps removed)
+      // Clear the analyze timer since we got a response
+      clearTimeout(analyzeTimer);
+
+      // Animate backend progress steps one by one
+      console.log('📊 Full backend response:', response.data);
+      console.log('📊 Backend progress steps:', response.data.progress_steps);
+      
+      if (response.data.progress_steps && Array.isArray(response.data.progress_steps) && response.data.progress_steps.length > 0) {
+        const backendSteps = response.data.progress_steps.map((step: any) => {
+          if (typeof step === 'string') {
+            return step;
+          }
+          // Format backend step objects to user-friendly messages (text only, no icons)
+          const message = step.message || step.step || 'Processing...';
+          return message;
+        });
+        
+        console.log('✨ Formatted processing steps:', backendSteps);
+        
+        // Animate steps appearing one by one with 150ms delay between each
+        setProcessingSteps([backendSteps[0]]);
+        for (let i = 1; i < backendSteps.length; i++) {
+          await new Promise(resolve => setTimeout(resolve, 150));
+          setProcessingSteps(prev => [...prev, backendSteps[i]]);
+        }
+      } else {
+        // Fallback if no steps from backend
+        setProcessingSteps(['Processing complete']);
+      }
 
       // Update assistant message with response
       // Find the assistant message that was just added (empty content, isTyping: true)
@@ -514,7 +550,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       }
     } catch (error) {
       console.error("Failed to send message:", error);
-      // (steps removed)
+      setProcessingSteps(prev => [...prev, 'Error occurred']);
       
       // Remove the placeholder assistant message if it exists
       setMessages((prev) => {
@@ -532,6 +568,10 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      // Clear processing steps after a short delay
+      setTimeout(() => {
+        setProcessingSteps([]);
+      }, 1000);
     }
   };
 
@@ -808,8 +848,31 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map((message, index) => (
           <div key={index} className="group">
-            {/* Cursor-style steps directly above the active assistant bubble (not inside any bubble) */}
-            {/* steps removed */}
+            {/* Processing steps - show above the last assistant message when loading */}
+            {message.role === "assistant" && 
+             index === messages.length - 1 && 
+             processingSteps.length > 0 && (
+              <div className="mb-2 space-y-0.5 text-xs text-gray-600 dark:text-gray-400">
+                {processingSteps.map((step, stepIndex) => (
+                  <div 
+                    key={stepIndex} 
+                    className={`flex items-start gap-1.5 transition-all duration-200 ${
+                      stepIndex === processingSteps.length - 1 && isLoading
+                        ? 'text-blue-600 dark:text-blue-400' 
+                        : step.toLowerCase().includes('complete') 
+                        ? 'text-green-600 dark:text-green-400'
+                        : step.toLowerCase().includes('error')
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'opacity-75'
+                    }`}
+                  >
+                    <span className={stepIndex === processingSteps.length - 1 && isLoading ? 'animate-pulse' : ''}>
+                      {step}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div
               className={`flex ${
                 message.role === "user" ? "justify-end" : "justify-start"
