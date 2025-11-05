@@ -122,9 +122,9 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
   const [welcomeQuestions, setWelcomeQuestions] = useState<string[]>([]);
   const [loadingWelcomeQuestions, setLoadingWelcomeQuestions] = useState(false);
   const [loadingInChatSuggestions, setLoadingInChatSuggestions] = useState(false); // Loading state for in-chat suggestions
-  const [currentProgressSteps, setCurrentProgressSteps] = useState<Array<{ step: string; message: string }>>([]); // Real-time progress steps
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const skipNextInitRef = useRef<boolean>(false);
 
   const fetchSuggestedQuestions = useCallback(async () => {
     try {
@@ -226,10 +226,21 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
              try {
                console.log('🔄 ChatInterface: useEffect triggered with conversationId:', conversationId);
                
-               // Reset state when switching conversations
+              // If just promoting a temp session to a real one, keep current UI intact
+             if (skipNextInitRef.current) {
+               skipNextInitRef.current = false;
+               if (conversationId) {
+                 setSessionId(conversationId);
+               }
+               console.log('⏭️ Skipping reset due to session promotion - keeping all UI state');
+               return; // CRITICAL: Don't continue execution - keep current messages/state
+             } else {
+               // Reset state when switching conversations normally (e.g., clicking "New Chat")
+               setMessages([]);
                setSessionId(null);
                setTitleGenerated(false);
                setAttachedFiles([]);
+             }
                
                const user = await getCurrentUser();
                if (user) {
@@ -287,25 +298,25 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                      console.log('✅ ChatInterface: Set messages count:', formattedMessages.length);
                    } else {
                      // New sessions show ChatGPT-style welcome interface (no messages needed)
-                     console.log('ℹ️ ChatInterface: New session with no messages, showing welcome interface');
-                     setMessages([]);
+                  console.log('ℹ️ ChatInterface: New session with no messages, showing welcome interface');
+                  if (messages.length === 0) setMessages([]);
                      setSessionId(conversationId);
                      // Fetch welcome questions
                      fetchSuggestedQuestions();
                    }
                  } else {
-                   console.log('ℹ️ ChatInterface: No conversationId, showing welcome interface');
-                   setMessages([]);
+                  console.log('ℹ️ ChatInterface: No conversationId, showing welcome interface');
+                  if (messages.length === 0) setMessages([]);
                    // Fetch welcome questions
                    fetchSuggestedQuestions();
                  }
                } else {
-                 console.log('❌ ChatInterface: No user found, showing welcome interface');
-                 setMessages([]);
+                console.log('❌ ChatInterface: No user found, showing welcome interface');
+                if (messages.length === 0) setMessages([]);
                }
              } catch (error) {
-               console.error('❌ ChatInterface: Error initializing user:', error);
-               setMessages([]);
+              console.error('❌ ChatInterface: Error initializing user:', error);
+              if (messages.length === 0) setMessages([]);
              }
            };
 
@@ -358,6 +369,8 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         currentSessionId = realSessionId;
         setSessionId(realSessionId);
         // Notify parent component to update conversation list
+        // Prevent initializeUser from wiping the UI on the upcoming conversation change
+        skipNextInitRef.current = true;
         if (onSessionCreated) {
           onSessionCreated(tempId, realSessionId);
         }
@@ -395,7 +408,6 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
     setAttachedFiles([]);
     setFilePreviews(new Map()); // Clear previews when sending
     setIsLoading(true);
-    setCurrentProgressSteps([]); // Clear previous progress steps
 
     // Save user message to Supabase (include file indicator if files were attached)
     if (currentSessionId) {
@@ -419,6 +431,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
     };
     
     setMessages((prev) => [...prev, assistantMessage]);
+    // (steps removed)
 
     try {
       // Prepare request with files if any
@@ -450,10 +463,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         });
       }
 
-      // Show progress steps while processing (from response)
-      if (response.data.progressSteps && response.data.progressSteps.length > 0) {
-        setCurrentProgressSteps(response.data.progressSteps);
-      }
+      // (steps removed)
 
       // Update assistant message with response
       // Find the assistant message that was just added (empty content, isTyping: true)
@@ -504,7 +514,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       }
     } catch (error) {
       console.error("Failed to send message:", error);
-      setCurrentProgressSteps([]); // Clear progress on error
+      // (steps removed)
       
       // Remove the placeholder assistant message if it exists
       setMessages((prev) => {
@@ -522,7 +532,6 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-      setCurrentProgressSteps([]); // Clear progress when done
     }
   };
 
@@ -797,22 +806,10 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {/* Real-time Progress Steps - simple text log format (no bubble) */}
-        {isLoading && currentProgressSteps.length > 0 && (
-          <div className="mb-4 font-mono text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
-            {currentProgressSteps.map((step, stepIdx) => (
-              <div key={stepIdx} className="flex items-start gap-2">
-                <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">
-                  {step.step === 'complete' || step.step === 'error' ? '✓' : '•'}
-                </span>
-                <span>{step.message}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        
         {messages.map((message, index) => (
           <div key={index} className="group">
+            {/* Cursor-style steps directly above the active assistant bubble (not inside any bubble) */}
+            {/* steps removed */}
             <div
               className={`flex ${
                 message.role === "user" ? "justify-end" : "justify-start"
@@ -850,7 +847,12 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                 ) : message.role === "user" ? (
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                 ) : (
-                  <div className="text-sm text-gray-500 dark:text-gray-400 italic">Processing...</div>
+                  // Assistant bubble placeholder: show subtle typing dots INSIDE the bubble
+                  <div className="flex gap-1 py-0.5">
+                    <div className="w-2 h-2 bg-gray-500/70 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-2 h-2 bg-gray-500/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-2 h-2 bg-gray-500/50 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
                 )}
                 
                 {message.attachments && message.attachments.length > 0 && (
@@ -962,17 +964,8 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
           </div>
         ))}
 
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-gray-200 dark:bg-slate-700 rounded-2xl px-4 py-3">
-              <div className="flex gap-1">
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
-            </div>
-          </div>
-        )}
+        {/* In-bubble loading animation (keep the classic typing indicator) */}
+        {/* Removed separate global typing bubble */}
 
         <div ref={messagesEndRef} />
       </div>

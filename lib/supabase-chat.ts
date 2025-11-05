@@ -206,31 +206,65 @@ export async function deleteSession(sessionId: string): Promise<boolean> {
       return false;
     }
     
-    // First delete all messages
+    console.log('🗑️ deleteSession: Starting deletion for session:', sessionId);
+    
+    // First delete all conversation contexts
+    console.log('🗑️ deleteSession: Deleting conversation contexts...');
+    const { error: contextsError } = await supabase
+      .from('conversation_contexts')
+      .delete()
+      .eq('session_id', sessionId);
+
+    if (contextsError) {
+      console.error('❌ Error deleting conversation contexts:', contextsError);
+      // Continue anyway - contexts table might not have entries
+    } else {
+      console.log('✅ Conversation contexts deleted');
+    }
+    
+    // Delete suggested questions for this session
+    console.log('🗑️ deleteSession: Deleting suggested questions...');
+    const { error: questionsError } = await supabase
+      .from('suggested_questions')
+      .delete()
+      .eq('session_id', sessionId);
+
+    if (questionsError) {
+      console.error('❌ Error deleting suggested questions:', questionsError);
+      // Continue anyway - questions table might not have entries
+    } else {
+      console.log('✅ Suggested questions deleted');
+    }
+    
+    // Then delete all messages
+    console.log('🗑️ deleteSession: Deleting messages...');
     const { error: messagesError } = await supabase
       .from('messages')
       .delete()
       .eq('session_id', sessionId);
 
     if (messagesError) {
-      console.error('Error deleting messages:', messagesError);
+      console.error('❌ Error deleting messages:', messagesError);
       return false;
     }
+    console.log('✅ Messages deleted');
 
-    // Then delete the session
+    // Finally delete the session
+    console.log('🗑️ deleteSession: Deleting session...');
     const { error: sessionError } = await supabase
       .from('sessions')
       .delete()
       .eq('id', sessionId);
 
     if (sessionError) {
-      console.error('Error deleting session:', sessionError);
+      console.error('❌ Error deleting session:', sessionError);
       return false;
     }
 
+    console.log('✅ deleteSession: Session deleted successfully');
     return true;
   } catch (error) {
-    console.error('Error deleting session:', error);
+    console.error('❌ Exception in deleteSession:', error);
     return false;
   }
 }

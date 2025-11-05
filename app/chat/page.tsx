@@ -177,10 +177,14 @@ export default function ChatPage() {
     
     const { id } = conversationToDelete;
     
+    console.log('🗑️ ChatPage: Starting deletion for conversation:', id);
+    
     try {
       // Delete from Supabase
       const success = await deleteSession(id);
       if (success) {
+        console.log('✅ ChatPage: Conversation deleted successfully from database');
+        
         // Remove from conversations list
         setConversations((prev) => prev.filter((conv) => conv.id !== id));
         
@@ -189,22 +193,26 @@ export default function ChatPage() {
           const remainingConversations = conversations.filter((conv) => conv.id !== id);
           if (remainingConversations.length > 0) {
             setSelectedConversationId(remainingConversations[0].id);
+            console.log('✅ ChatPage: Selected next conversation:', remainingConversations[0].id);
           } else {
             // Create a new conversation if no conversations remain
             const newConv = {
-              id: Date.now().toString(),
+              id: `temp_${Date.now()}`,
               title: "New chat",
               timestamp: "Just now",
             };
             setConversations([newConv]);
             setSelectedConversationId(newConv.id);
+            console.log('✅ ChatPage: Created new conversation (no remaining conversations)');
           }
         }
       } else {
-        console.error('Failed to delete conversation from database');
+        console.error('❌ ChatPage: Failed to delete conversation from database');
+        alert('Failed to delete conversation. Please check console for details.');
       }
     } catch (error) {
-      console.error('Error deleting conversation:', error);
+      console.error('❌ ChatPage: Exception deleting conversation:', error);
+      alert('Error deleting conversation. Please check console for details.');
     }
     
     // Reset modal state
