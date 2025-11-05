@@ -526,6 +526,12 @@ export default function SettingsPage() {
                           return;
                         }
                         
+                        if (!supabase) {
+                          showNotification('Database connection error', 'error');
+                          setUploadingAvatar(false);
+                          return;
+                        }
+                        
                         // Create a unique filename
                         const fileExt = file.name.split('.').pop();
                         const fileName = `${userId}/${Date.now()}.${fileExt}`;
@@ -547,6 +553,11 @@ export default function SettingsPage() {
                           reader.onloadend = async () => {
                             const base64 = reader.result as string;
                             const newAvatarUrl = base64;
+                            
+                            if (!supabase) {
+                              showNotification('Database connection error', 'error');
+                              return;
+                            }
                             
                             // Update profile in database
                             const { error: updateError } = await supabase
