@@ -22,6 +22,7 @@ interface Message {
   attachments?: { name: string; type: string; url?: string }[];
   isTyping?: boolean;
   displayedContent?: string;
+  progressSteps?: Array<{ step: string; message: string }>;
 }
 
 interface ChatInterfaceProps {
@@ -65,7 +66,7 @@ function TypewriterText({ text, onComplete }: { text: string; onComplete: () => 
       const timeout = setTimeout(() => {
         setDisplayedText(prev => prev + text[currentIndex]);
         setCurrentIndex(prev => prev + 1);
-      }, 15);
+      }, 5); // Speed up from 15ms to 5ms
       return () => clearTimeout(timeout);
     } else if (currentIndex === text.length && onComplete) {
       onComplete();
@@ -115,9 +116,13 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [titleGenerated, setTitleGenerated] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [filePreviews, setFilePreviews] = useState<Map<number, string>>(new Map());
+  const [messageFilePreviews, setMessageFilePreviews] = useState<Map<string, Map<number, string>>>(new Map()); // Store previews by message index
   const [userId, setUserId] = useState<string | null>(null);
   const [welcomeQuestions, setWelcomeQuestions] = useState<string[]>([]);
   const [loadingWelcomeQuestions, setLoadingWelcomeQuestions] = useState(false);
+  const [loadingInChatSuggestions, setLoadingInChatSuggestions] = useState(false); // Loading state for in-chat suggestions
+  const [currentProgressSteps, setCurrentProgressSteps] = useState<Array<{ step: string; message: string }>>([]); // Real-time progress steps
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -126,20 +131,74 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       setLoadingWelcomeQuestions(true);
       console.log('💡 ChatInterface: Fetching suggested questions from backend...');
       
-      // Use the new backend API to get suggested questions
+      // Check if user has chat summaries, if yes, generate questions based on summaries
+      if (userId) {
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          if (!supabase) {
+            throw new Error('Supabase client not available');
+          }
+          const { data: summaries, error } = await supabase
+            .from('chat_summaries')
+            .select('summary')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(5);
+          
+          // Check if we already have cached welcome questions for this user
+          const { data: cachedQuestions, error: cacheError } = await supabase
+            .from('suggested_questions')
+            .select('questions')
+            .eq('user_id', userId)
+            .eq('source_type', 'welcome')
+            .is('session_id', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (!cacheError && cachedQuestions && cachedQuestions.questions && cachedQuestions.questions.length > 0) {
+            console.log('✅ ChatInterface: Using cached welcome questions from database');
+            setWelcomeQuestions(cachedQuestions.questions.slice(0, 4));
+            return;
+          }
+          
+          if (!error && summaries && summaries.length > 0) {
+            // User has chat summaries - generate questions based on them
+            console.log('💡 ChatInterface: User has chat summaries, generating questions based on summaries');
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+            const summaryText = summaries.map(s => s.summary).join('\n\n');
+            
+            try {
+              const response = await axios.post(`${backendUrl}/v1/generate-questions-from-summaries`, {
+                summaries: summaryText,
+                user_id: userId
+              });
+              
+              if (response.data?.questions && Array.isArray(response.data.questions)) {
+                setWelcomeQuestions(response.data.questions.slice(0, 4));
+                console.log('✅ ChatInterface: Generated welcome questions from summaries:', response.data.questions.slice(0, 4));
+                return;
+              }
+            } catch (summaryError) {
+              console.warn('⚠️ ChatInterface: Error generating questions from summaries:', summaryError);
+            }
+          }
+        } catch (summaryCheckError) {
+          console.warn('⚠️ ChatInterface: Error checking chat summaries:', summaryCheckError);
+        }
+      }
+      
+      // Fallback: use generic questions if no summaries or error
+      console.log('💡 ChatInterface: Using generic welcome questions');
       const response = await axios.get('/api/data?action=suggestions');
       
-      console.log('💡 ChatInterface: Suggested questions response:', response.data);
-      
-      // Backend returns an array of questions
       const questions = Array.isArray(response.data) ? response.data : (response.data?.questions || []);
       
       if (questions.length > 0) {
-        setWelcomeQuestions(questions.slice(0, 4)); // Take first 4 suggestions
+        setWelcomeQuestions(questions.slice(0, 4));
         console.log('✅ ChatInterface: Loaded welcome questions:', questions.slice(0, 4));
       } else {
         console.log('⚠️ ChatInterface: No suggested questions returned from API. Response:', response.data);
-        // Fallback to default questions
         setWelcomeQuestions([
           "What are the top performing product groups by sales volume?",
           "Which entities have the highest sales in the most recent period?",
@@ -150,7 +209,6 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
     } catch (error: any) {
       console.error("❌ ChatInterface: Failed to fetch suggested questions:", error);
       console.error("❌ ChatInterface: Error details:", error.response?.data || error.message);
-      // Fallback to default questions on error
       setWelcomeQuestions([
         "What are the top performing product groups by sales volume?",
         "Which entities have the highest sales in the most recent period?",
@@ -160,7 +218,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
     } finally {
       setLoadingWelcomeQuestions(false);
     }
-  }, []);
+  }, [userId]);
 
          // Load user and initialize session
          useEffect(() => {
@@ -191,12 +249,37 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                    console.log('📋 ChatInterface: Raw messages data:', dbMessages);
                    
                    if (dbMessages.length > 0) {
-                     const formattedMessages = dbMessages.map((msg: ChatMessage) => ({
-                       role: msg.role,
-                       content: msg.content,
-                       sources: msg.sources || undefined, // Now we have sources from database
-                       isTyping: false
-                     }));
+                     const formattedMessages = dbMessages.map((msg: ChatMessage) => {
+                       // Check if message content indicates file attachments and extract file names
+                       let attachments = undefined;
+                       if (msg.role === 'user') {
+                         const fileMatch = msg.content.match(/\(file attached: (.+?)\)/);
+                         if (fileMatch) {
+                           // Extract file names from the stored message
+                           const fileNames = fileMatch[1].split(", ");
+                           attachments = fileNames.map(name => ({ name, type: "file" }));
+                           // Clean content to remove the file indicator for display
+                           const cleanContent = msg.content.replace(/\(file attached: .+?\)/g, '').trim();
+                           return {
+                             role: msg.role,
+                             content: cleanContent || "(file attached)",
+                             sources: msg.sources || undefined,
+                             attachments: attachments,
+                             isTyping: false
+                           };
+                         } else if (msg.content === "(file attached)" || msg.content.includes("(file attached)")) {
+                           attachments = [{ name: "File attached", type: "file" }];
+                         }
+                       }
+                       
+                       return {
+                         role: msg.role,
+                         content: msg.content,
+                         sources: msg.sources || undefined,
+                         attachments: attachments,
+                         isTyping: false
+                       };
+                     });
                      console.log('📝 ChatInterface: Formatted messages:', formattedMessages);
                      setMessages(formattedMessages);
                      setSessionId(conversationId);
@@ -285,53 +368,124 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       }
     }
 
+    // Store file previews for this message before clearing
+    const messageIndex = messages.length;
+    const currentFilePreviews = new Map<number, string>();
+    attachedFiles.forEach((file, idx) => {
+      const preview = filePreviews.get(idx);
+      if (preview) {
+        currentFilePreviews.set(idx, preview);
+      }
+    });
+    setMessageFilePreviews(prev => new Map(prev).set(messageIndex.toString(), currentFilePreviews));
+    
     const userMessage: Message = {
       role: "user",
       content: textToSend || "(file attached)",
-      attachments: attachedFiles.map(f => ({ name: f.name, type: f.type })),
+      attachments: attachedFiles.map((f, idx) => ({ 
+        name: f.name, 
+        type: f.type,
+        url: filePreviews.get(idx) || undefined // Store preview URL
+      })),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     const filesToSend = attachedFiles;
     setAttachedFiles([]);
+    setFilePreviews(new Map()); // Clear previews when sending
     setIsLoading(true);
+    setCurrentProgressSteps([]); // Clear previous progress steps
 
-    // Save user message to Supabase
+    // Save user message to Supabase (include file indicator if files were attached)
     if (currentSessionId) {
-      await saveMessage(currentSessionId, 'user', textToSend || "(file attached)");
+      const messageContent = filesToSend.length > 0 
+        ? `${textToSend || ""}${textToSend ? " " : ""}(file attached: ${filesToSend.map(f => f.name).join(", ")})`
+        : textToSend || "(file attached)";
+      await saveMessage(currentSessionId, 'user', messageContent);
     }
 
+    // Create assistant message placeholder immediately to show progress
+    // Note: assistantMessageIndex should be messages.length + 1 (after user message is added)
+    const assistantMessageIndex = messages.length + 1; // +1 because user message was just added
+    const assistantMessage: Message = {
+      role: "assistant",
+      content: "",
+      sources: undefined,
+      attachments: undefined,
+      suggestedQuestions: undefined,
+      progressSteps: [],
+      isTyping: true,
+    };
+    
+    setMessages((prev) => [...prev, assistantMessage]);
+
     try {
-      // Use the new backend API
-      const response = await axios.post('/api/chat', {
-        message: textToSend,
-        conversationHistory: messages.slice(-5) // Send last 5 messages for context
+      // Prepare request with files if any
+      let response;
+      if (filesToSend.length > 0) {
+        // Use FormData to send files
+        const formData = new FormData();
+        formData.append('message', textToSend || '');
+        formData.append('conversationHistory', JSON.stringify(messages.slice(-5).map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))));
+        
+        // Append all files
+        filesToSend.forEach((file) => {
+          formData.append('files', file);
+        });
+        
+        response = await axios.post('/api/chat', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        // Regular JSON request for text-only messages
+        response = await axios.post('/api/chat', {
+          message: textToSend,
+          conversationHistory: messages.slice(-5) // Send last 5 messages for context
+        });
+      }
+
+      // Show progress steps while processing (from response)
+      if (response.data.progressSteps && response.data.progressSteps.length > 0) {
+        setCurrentProgressSteps(response.data.progressSteps);
+      }
+
+      // Update assistant message with response
+      // Find the assistant message that was just added (empty content, isTyping: true)
+      setMessages((prev) => {
+        // Find the last assistant message with empty content (the placeholder we just added)
+        const lastAssistantIndex = prev.length - 1;
+        if (lastAssistantIndex >= 0 && prev[lastAssistantIndex].role === "assistant" && prev[lastAssistantIndex].content === "") {
+          return prev.map((msg, i) => 
+            i === lastAssistantIndex 
+              ? {
+                  ...msg,
+                  content: response.data.response,
+                  sources: response.data.contextSources > 0 ? [`${response.data.contextSources} data sources used`] : undefined,
+                  progressSteps: response.data.progressSteps || [],
+                  isTyping: true,
+                }
+              : msg
+          );
+        }
+        // Fallback: try to find by index
+        return prev.map((msg, i) => 
+          i === assistantMessageIndex && msg.role === "assistant"
+            ? {
+                ...msg,
+                content: response.data.response,
+                sources: response.data.contextSources > 0 ? [`${response.data.contextSources} data sources used`] : undefined,
+                progressSteps: response.data.progressSteps || [],
+                isTyping: true,
+              }
+            : msg
+        );
       });
-
-      // Check if this is a greeting message to show welcome suggestions
-      const isGreeting = /^(hi|hello|hey|good morning|good afternoon|good evening|greetings?)$/i.test(textToSend.trim());
-      
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: response.data.response,
-        sources: response.data.contextSources > 0 ? [`${response.data.contextSources} data sources used`] : undefined,
-        suggestedQuestions: isGreeting ? [
-          "What are the top performing product groups by sales volume?",
-          "Which entities have the highest sales in the most recent period?",
-          "How do single-location stores compare to multi-location chains?",
-          "What is the average sales volume per transaction for each product group?",
-          "Which entities have the most diverse product offerings?"
-        ] : [
-          "Tell me more about the sales trends",
-          "What are the key insights from this data?",
-          "How can I improve performance?",
-          "What should I focus on next?"
-        ],
-        isTyping: true,
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
       
       // Save assistant message to Supabase
       if (currentSessionId) {
@@ -350,6 +504,17 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       }
     } catch (error) {
       console.error("Failed to send message:", error);
+      setCurrentProgressSteps([]); // Clear progress on error
+      
+      // Remove the placeholder assistant message if it exists
+      setMessages((prev) => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg && lastMsg.role === "assistant" && !lastMsg.content) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+      
       const errorMessage: Message = {
         role: "assistant",
         content: "Sorry, I encountered an error. Please try again.",
@@ -357,6 +522,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setCurrentProgressSteps([]); // Clear progress when done
     }
   };
 
@@ -364,16 +530,29 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
     try {
       console.log('🏷️ ChatInterface: Generating title for message:', firstMessage.substring(0, 50) + '...');
       
-      // Use the new backend API to generate a title
-      const response = await axios.post('/api/chat', {
-        message: `Generate a short, descriptive title for this conversation. Return ONLY the title text itself, no prefix like "Title:", no quotes, no labels. Just the title: "${firstMessage}"`
+      // Clean the message (remove file references for title generation)
+      let cleanMessage = firstMessage;
+      if (cleanMessage.includes("(file attached)")) {
+        cleanMessage = cleanMessage.replace(/\(file attached\)/g, '').trim();
+      }
+      // Remove file attachment indicators
+      cleanMessage = cleanMessage.replace(/\(file attached: .+?\)/g, '').trim();
+      
+      // Use the dedicated title generation endpoint that bypasses RAG
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const response = await axios.post(`${backendUrl}/v1/generate-title`, {
+        message: cleanMessage
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       
       console.log('🏷️ ChatInterface: AI title response:', response.data);
       
-      if (response.data.response && onTitleGenerated) {
-        // Clean up the title response
-        let title = response.data.response.trim();
+      if (response.data.title && onTitleGenerated) {
+        // Clean up the title response (from /v1/generate-title endpoint)
+        let title = response.data.title.trim();
         
         // Remove "Title:" prefix (case-insensitive, with optional colon and whitespace)
         title = title.replace(/^title:\s*/i, '');
@@ -422,35 +601,86 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
   };
 
   const generateSuggestedQuestions = async (aiAnswer: string) => {
+    if (loadingInChatSuggestions) return; // Prevent multiple simultaneous requests
+    
     try {
-      console.log('💡 ChatInterface: Generating suggested questions for answer:', aiAnswer.substring(0, 100) + '...');
+      setLoadingInChatSuggestions(true);
+      console.log('💡 ChatInterface: Fetching cached suggested questions...');
       
-      // Get the last user message to generate contextual questions
       const lastUserMessage = messages.filter(msg => msg.role === 'user').slice(-1)[0]?.content || '';
+      const currentSessionId = conversationId || sessionId;
       
-      console.log('💡 ChatInterface: Using user message for context:', lastUserMessage.substring(0, 100) + '...');
+      if (!currentSessionId) {
+        console.warn('⚠️ ChatInterface: No session ID, cannot fetch cached suggestions');
+        return;
+      }
       
-      // Use the new backend API to get suggested questions, passing the user's last message
+      // Create a hash of the user message for matching (first 200 chars)
+      const contextHash = lastUserMessage.substring(0, 200);
+      
+      // Try to get cached suggestions from database
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      try {
+        const cachedResponse = await axios.get(`${backendUrl}/v1/get-cached-suggestions`, {
+          params: {
+            session_id: currentSessionId,
+            context_hash: contextHash
+          }
+        });
+        
+        if (cachedResponse.data?.cached && cachedResponse.data.questions?.length > 0) {
+          console.log('✅ ChatInterface: Using cached suggested questions from database');
+          setMessages((prev) => 
+            prev.map((msg, index) => 
+              index === messages.length - 1 && msg.role === 'assistant'
+                ? { ...msg, suggestedQuestions: cachedResponse.data.questions.slice(0, 3) }
+                : msg
+            )
+          );
+          return; // Successfully loaded from cache
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ ChatInterface: Error fetching cached suggestions:', cacheError);
+      }
+      
+      // If no cache, generate new questions
+      console.log('💡 ChatInterface: No cache found, generating new suggested questions...');
       const url = lastUserMessage 
         ? `/api/data?action=suggestions&user_message=${encodeURIComponent(lastUserMessage)}`
         : '/api/data?action=suggestions';
       
       const response = await axios.get(url);
       
-      console.log('💡 ChatInterface: Suggested questions response:', response.data);
-      
-      // Backend returns an array of questions (exactly 3 for contextual, 4 for generic)
       const questions = Array.isArray(response.data) ? response.data : (response.data?.questions || []);
       
       if (questions.length > 0) {
-        // Update the last assistant message with suggested questions (take first 3)
+        const questionsToStore = questions.slice(0, 3);
+        
+        // Update UI immediately
         setMessages((prev) => 
           prev.map((msg, index) => 
             index === messages.length - 1 && msg.role === 'assistant'
-              ? { ...msg, suggestedQuestions: questions.slice(0, 3) } // Take first 3 suggestions
+              ? { ...msg, suggestedQuestions: questionsToStore }
               : msg
           )
         );
+        
+        // Store in database for future use (only once per user message)
+        if (currentSessionId && userId) {
+          try {
+            const formData = new FormData();
+            formData.append('session_id', currentSessionId);
+            formData.append('user_id', userId);
+            formData.append('questions', JSON.stringify(questionsToStore));
+            formData.append('context_hash', contextHash);
+            
+            await axios.post(`${backendUrl}/v1/store-suggestions`, formData);
+            console.log('✅ ChatInterface: Stored suggested questions in database');
+          } catch (storeError) {
+            console.warn('⚠️ ChatInterface: Failed to store suggestions:', storeError);
+          }
+        }
+        
         console.log('✅ ChatInterface: Added suggested questions to last message');
       } else {
         console.log('⚠️ ChatInterface: No suggested questions returned from API. Response:', response.data);
@@ -458,6 +688,8 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
     } catch (error: any) {
       console.error("❌ ChatInterface: Failed to generate suggested questions:", error);
       console.error("❌ ChatInterface: Error details:", error.response?.data || error.message);
+    } finally {
+      setLoadingInChatSuggestions(false);
     }
   };
 
@@ -470,11 +702,77 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setAttachedFiles((prev) => [...prev, ...files]);
+    setAttachedFiles((prev) => {
+      const newFiles = [...prev, ...files];
+      
+      // Generate previews for new files
+      files.forEach((file, relativeIndex) => {
+        const absoluteIndex = prev.length + relativeIndex;
+        generateFilePreview(file, absoluteIndex);
+      });
+      
+      return newFiles;
+    });
+  };
+
+  const generateFilePreview = (file: File, index: number) => {
+    if (file.type.startsWith('image/')) {
+      // Create image preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setFilePreviews((prev) => new Map(prev).set(index, result));
+      };
+      reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+      // PDF preview - we'll show a PDF icon, but could also show first page thumbnail
+      setFilePreviews((prev) => new Map(prev).set(index, 'pdf-icon'));
+    } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+      // CSV preview - show first few rows
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').slice(0, 3).join('\n');
+        setFilePreviews((prev) => new Map(prev).set(index, `csv-preview:${lines}`));
+      };
+      reader.readAsText(file);
+    } else if (
+      file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.type === 'application/vnd.ms-excel' ||
+      file.name.endsWith('.xlsx') ||
+      file.name.endsWith('.xls')
+    ) {
+      // Excel preview - show icon
+      setFilePreviews((prev) => new Map(prev).set(index, 'excel-icon'));
+    }
   };
 
   const removeFile = (index: number) => {
-    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+    // Clean up preview URL if it exists
+    const preview = filePreviews.get(index);
+    if (preview && preview.startsWith('data:')) {
+      // Revoke object URL if it's a blob URL
+      // Note: data URLs don't need revocation, but we'll clean up the map
+    }
+    
+    setAttachedFiles((prev) => {
+      const newFiles = prev.filter((_, i) => i !== index);
+      
+      // Update preview map indices
+      setFilePreviews((prevPreviews) => {
+        const newPreviews = new Map<number, string>();
+        prevPreviews.forEach((value, key) => {
+          if (key < index) {
+            newPreviews.set(key, value);
+          } else if (key > index) {
+            newPreviews.set(key - 1, value);
+          }
+        });
+        return newPreviews;
+      });
+      
+      return newFiles;
+    });
   };
 
   const handleFileUploadClick = () => {
@@ -499,6 +797,20 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {/* Real-time Progress Steps - simple text log format (no bubble) */}
+        {isLoading && currentProgressSteps.length > 0 && (
+          <div className="mb-4 font-mono text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+            {currentProgressSteps.map((step, stepIdx) => (
+              <div key={stepIdx} className="flex items-start gap-2">
+                <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">
+                  {step.step === 'complete' || step.step === 'error' ? '✓' : '•'}
+                </span>
+                <span>{step.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        
         {messages.map((message, index) => (
           <div key={index} className="group">
             <div
@@ -518,7 +830,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                   <CopyButton content={message.content} />
                 </div>
                 
-                {message.role === "assistant" && message.isTyping ? (
+                {message.role === "assistant" && message.isTyping && message.content ? (
                   <TypewriterText 
                     text={message.content} 
                     onComplete={() => {
@@ -529,24 +841,64 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                       );
                     }}
                   />
-                ) : message.role === "assistant" ? (
+                ) : message.role === "assistant" && message.content ? (
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {message.content}
                     </ReactMarkdown>
                   </div>
-                ) : (
+                ) : message.role === "user" ? (
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                ) : (
+                  <div className="text-sm text-gray-500 dark:text-gray-400 italic">Processing...</div>
                 )}
                 
                 {message.attachments && message.attachments.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {message.attachments.map((file, i) => (
-                      <div key={i} className="flex items-center gap-2 text-xs opacity-75">
-                        <Paperclip className="w-3 h-3" />
-                        <span>{file.name}</span>
-                      </div>
-                    ))}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {message.attachments.map((file, i) => {
+                      // Get preview from stored URL or message previews
+                      const storedPreview = messageFilePreviews.get(index.toString())?.get(i);
+                      const filePreview = file.url || storedPreview;
+                      const isImage = file.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|bmp|tiff)$/i.test(file.name);
+                      const isPDF = file.type === 'application/pdf' || file.name?.endsWith('.pdf');
+                      const isCSV = file.type === 'text/csv' || file.name?.endsWith('.csv');
+                      const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                                     file.type === 'application/vnd.ms-excel' ||
+                                     file.name?.endsWith('.xlsx') || file.name?.endsWith('.xls');
+                      
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 bg-white/10 dark:bg-white/5 px-3 py-2 rounded-lg text-xs"
+                        >
+                          {/* File Preview - same style as upload area */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isImage && filePreview && filePreview.startsWith('data:') ? (
+                              <img
+                                src={filePreview}
+                                alt={file.name}
+                                className="w-8 h-8 object-cover rounded border border-white/20 flex-shrink-0"
+                              />
+                            ) : isPDF ? (
+                              <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded border border-red-300 dark:border-red-700 flex items-center justify-center flex-shrink-0">
+                                <span className="text-red-600 dark:text-red-400 text-[10px] font-bold">PDF</span>
+                              </div>
+                            ) : isExcel ? (
+                              <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded border border-green-300 dark:border-green-700 flex items-center justify-center flex-shrink-0">
+                                <span className="text-green-600 dark:text-green-400 text-[10px] font-bold">XLS</span>
+                              </div>
+                            ) : isCSV ? (
+                              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700 flex items-center justify-center flex-shrink-0">
+                                <span className="text-blue-600 dark:text-blue-400 text-[10px] font-bold">CSV</span>
+                              </div>
+                            ) : (
+                              <Paperclip className="w-3 h-3 flex-shrink-0 opacity-75" />
+                            )}
+                            <span className="max-w-[120px] truncate text-xs opacity-90">{file.name}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 
@@ -585,12 +937,25 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                 <div className="mt-3">
                   <button
                     onClick={() => generateSuggestedQuestions(message.content)}
-                    className="inline-flex items-center px-4 py-2 text-sm font-caslon bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                    disabled={loadingInChatSuggestions}
+                    className="inline-flex items-center px-4 py-2 text-sm font-caslon bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-700 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Get suggested questions
+                    {loadingInChatSuggestions ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Generating questions...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Get suggested questions
+                      </>
+                    )}
                   </button>
                 </div>
               )}
@@ -616,21 +981,57 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         {/* Attached Files Preview */}
         {attachedFiles.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
-            {attachedFiles.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 bg-gray-100 dark:bg-slate-800 px-3 py-2 rounded-lg text-sm"
-              >
-                <Paperclip className="w-4 h-4" />
-                <span className="max-w-[150px] truncate">{file.name}</span>
-                <button
-                  onClick={() => removeFile(index)}
-                  className="ml-1 hover:text-red-500 transition-colors"
+            {attachedFiles.map((file, index) => {
+              const preview = filePreviews.get(index);
+              const isImage = file.type.startsWith('image/');
+              const isPDF = file.type === 'application/pdf';
+              const isCSV = file.type === 'text/csv' || file.name.endsWith('.csv');
+              const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                             file.type === 'application/vnd.ms-excel' ||
+                             file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+              
+              return (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-gray-100 dark:bg-slate-800 px-3 py-2 rounded-lg text-sm relative group"
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+                  {/* File Preview */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    {isImage && preview && preview.startsWith('data:') ? (
+                      <img
+                        src={preview}
+                        alt={file.name}
+                        className="w-10 h-10 object-cover rounded border border-gray-300 dark:border-slate-600 flex-shrink-0"
+                      />
+                    ) : isPDF ? (
+                      <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded border border-red-300 dark:border-red-700 flex items-center justify-center flex-shrink-0">
+                        <span className="text-red-600 dark:text-red-400 text-xs font-bold">PDF</span>
+                      </div>
+                    ) : isExcel ? (
+                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded border border-green-300 dark:border-green-700 flex items-center justify-center flex-shrink-0">
+                        <span className="text-green-600 dark:text-green-400 text-xs font-bold">XLS</span>
+                      </div>
+                    ) : isCSV && preview && preview.startsWith('csv-preview:') ? (
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-300 dark:border-blue-700 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                        <div className="absolute inset-0 p-0.5 text-[7px] leading-tight text-blue-700 dark:text-blue-300 font-mono whitespace-pre overflow-hidden">
+                          {preview.replace('csv-preview:', '').substring(0, 80)}
+                        </div>
+                      </div>
+                    ) : (
+                      <Paperclip className="w-4 h-4 flex-shrink-0" />
+                    )}
+                    <span className="max-w-[150px] truncate">{file.name}</span>
+                  </div>
+                  <button
+                    onClick={() => removeFile(index)}
+                    className="ml-1 hover:text-red-500 transition-colors flex-shrink-0"
+                    title="Remove file"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -638,7 +1039,18 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         {messages.length === 0 && conversationTitle === 'New Chat' ? (
           <div className="relative">
             {/* Floating suggested questions - positioned above input */}
-            {!loadingWelcomeQuestions && welcomeQuestions.length > 0 && (
+            {loadingWelcomeQuestions ? (
+              <div className="absolute bottom-full left-0 right-0 mb-4 flex flex-wrap justify-center gap-2 px-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm animate-pulse"
+                  >
+                    <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : welcomeQuestions.length > 0 ? (
               <div className="absolute bottom-full left-0 right-0 mb-4 flex flex-wrap justify-center gap-2 px-4">
                 {welcomeQuestions.map((suggestion, index) => (
                   <button
@@ -653,7 +1065,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                   </button>
                 ))}
               </div>
-            )}
+            ) : null}
 
             {/* Normal input bar */}
             <div className="flex items-end gap-2">

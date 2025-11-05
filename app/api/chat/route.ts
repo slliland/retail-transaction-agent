@@ -2,11 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationHistory = [] } = await request.json();
+    const contentType = request.headers.get('content-type') || '';
+    
+    let message: string = '';
+    let conversationHistory: any[] = [];
+    let files: File[] = [];
+    
+    // Check if this is multipart/form-data (file upload) or JSON
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      message = formData.get('message') as string || '';
+      const historyStr = formData.get('conversationHistory') as string;
+      if (historyStr) {
+        try {
+          conversationHistory = JSON.parse(historyStr);
+        } catch (e) {
+          console.error('Failed to parse conversationHistory:', e);
+        }
+      }
+      
+      // Get all files
+      const fileEntries = formData.getAll('files');
+      files = fileEntries.filter((entry): entry is File => entry instanceof File);
+    } else {
+      // Regular JSON request
+      const body = await request.json();
+      message = body.message;
+      conversationHistory = body.conversationHistory || [];
+    }
 
-    if (!message) {
+    if (!message && files.length === 0) {
       return NextResponse.json(
-        { error: 'Message is required' },
+        { error: 'Message or file is required' },
         { status: 400 }
       );
     }
@@ -15,21 +42,43 @@ export async function POST(request: NextRequest) {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000';
     
     try {
-      const response = await fetch(`${backendUrl}/v1/ask`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: message,
-          k: 10,
-          session_id: null,
-          conversation_history: conversationHistory.map((msg: any) => ({
-            role: msg.role,
-            content: msg.content
-          }))
-        }),
-      });
+      let response;
+      if (files.length > 0) {
+        // Send files using FormData
+        const formData = new FormData();
+        formData.append('message', message || '');
+        formData.append('conversation_history', JSON.stringify(conversationHistory.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        }))));
+        
+        // Append all files
+        for (const file of files) {
+          formData.append('files', file);
+        }
+        
+        response = await fetch(`${backendUrl}/v1/ask`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        // Regular JSON request
+        response = await fetch(`${backendUrl}/v1/ask`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: message,
+            k: 10,
+            session_id: null,
+            conversation_history: conversationHistory.map((msg: any) => ({
+              role: msg.role,
+              content: msg.content
+            }))
+          }),
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`Backend responded with status: ${response.status}`);
@@ -41,7 +90,8 @@ export async function POST(request: NextRequest) {
         response: data.answer,
         contextSources: data.sources?.length || 0,
         validation: {},
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        progressSteps: data.progress_steps || []
       });
 
     } catch (backendError) {
