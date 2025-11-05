@@ -1,97 +1,54 @@
 import { NextResponse } from 'next/server';
-import { spawn } from 'child_process';
-import path from 'path';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://retail-transaction-analysis.onrender.com';
 
 export async function GET() {
   try {
-    // Check if backend files exist
-    const backendPath = path.join(process.cwd(), '..', 'backend');
-    const requiredFiles = [
-      'rag_system.py',
-      'vector_store.py',
-      'validation_system.py'
-    ];
+    // Simple proxy to actual Render backend health check
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-    const fs = require('fs');
-    const missingFiles = requiredFiles.filter(file => 
-      !fs.existsSync(path.join(backendPath, file))
-    );
-
-    if (missingFiles.length > 0) {
-      return NextResponse.json({
-        status: 'unhealthy',
-        message: 'Missing backend files',
-        missingFiles,
-        timestamp: new Date().toISOString()
-      }, { status: 503 });
-    }
-
-    // Check if Python dependencies are available
-    return new Promise<NextResponse>((resolve) => {
-      const python = spawn('python', ['-c', `
-import sys
-try:
-    import pandas
-    import chromadb
-    from sentence_transformers import SentenceTransformer
-    print('OK')
-except ImportError as e:
-    print(f'IMPORT_ERROR: {e}')
-    sys.exit(1)
-`], {
-        cwd: backendPath,
-        env: { ...process.env }
-      });
-
-      let output = '';
-      let errorOutput = '';
-
-      python.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-
-      python.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-
-      python.on('close', (code) => {
-        if (code === 0 && output.trim() === 'OK') {
-          resolve(NextResponse.json({
-            status: 'healthy',
-            message: 'All systems operational',
-            backend: {
-              path: backendPath,
-              files: requiredFiles,
-              dependencies: 'OK'
-            },
-            timestamp: new Date().toISOString()
-          }));
-        } else {
-          resolve(NextResponse.json({
-            status: 'unhealthy',
-            message: 'Python dependencies missing',
-            error: errorOutput || output,
-            timestamp: new Date().toISOString()
-          }, { status: 503 }));
-        }
-      });
-
-      python.on('error', (error) => {
-        resolve(NextResponse.json({
-          status: 'unhealthy',
-          message: 'Failed to check Python dependencies',
-          error: error.message,
-          timestamp: new Date().toISOString()
-        }, { status: 503 }));
-      });
+    const res = await fetch(`${BACKEND_URL}/health`, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
     });
 
-  } catch (error) {
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return NextResponse.json(
+        {
+          status: 'unhealthy',
+          message: 'Backend responded with error',
+          backendStatus: res.status,
+          backendBody: text,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 503 },
+      );
+    }
+
+    const data = await res.json().catch(() => ({}));
     return NextResponse.json({
-      status: 'unhealthy',
-      message: 'Health check failed',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, { status: 500 });
+      status: 'healthy',
+      message: 'Backend reachable',
+      backendResponse: data,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    // Handle timeout or network errors
+    const isTimeout = error?.name === 'AbortError';
+    return NextResponse.json(
+      {
+        status: 'unhealthy',
+        message: isTimeout ? 'Backend timeout (cold start)' : 'Failed to reach backend',
+        error: error?.message ?? String(error),
+        hint: isTimeout ? 'Backend is waking up from cold start. Try again in 30 seconds.' : undefined,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 },
+    );
   }
 }
