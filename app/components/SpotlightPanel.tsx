@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Loader2, Play, Pause, TrendingUp, MapPin, Package } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface CategoryInsight {
   category: string;
@@ -57,7 +58,7 @@ export default function SpotlightPanel() {
         setAudio(audioElement);
       }
     } catch (error: any) {
-      console.error("Error fetching spotlight:", error);
+      logger.error("Error fetching spotlight:", error);
       setError(error.response?.data?.detail || error.message || "Failed to load spotlight");
     } finally {
       setIsLoading(false);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Play, Pause, TrendingUp, Loader2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface SpotlightData {
   narrative: string;
@@ -32,7 +33,7 @@ export default function SpotlightView() {
       const response = await axios.get(`${apiUrl}/v1/spotlight/preview`);
       setSpotlight(response.data);
     } catch (err) {
-      console.error("Failed to load spotlight:", err);
+      logger.error("Failed to load spotlight:", err);
       setError("Failed to load spotlight data");
     } finally {
       setIsLoading(false);

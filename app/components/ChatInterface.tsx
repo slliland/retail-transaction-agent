@@ -13,6 +13,7 @@ import {
   updateSessionTitle,
   type ChatMessage 
 } from "@/lib/supabase-chat";
+import { logger } from "@/lib/logger";
 
 interface Message {
   role: "user" | "assistant";
@@ -42,7 +43,7 @@ function CopyButton({ content }: { content: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      logger.error('Failed to copy text: ', err);
     }
   };
 
@@ -130,7 +131,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
   const fetchSuggestedQuestions = useCallback(async () => {
     try {
       setLoadingWelcomeQuestions(true);
-      console.log('💡 ChatInterface: Fetching suggested questions from backend...');
+      logger.log('💡 ChatInterface: Fetching suggested questions from backend...');
       
       // Check if user has chat summaries, if yes, generate questions based on summaries
       if (userId) {
@@ -158,14 +159,14 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
             .single();
           
           if (!cacheError && cachedQuestions && cachedQuestions.questions && cachedQuestions.questions.length > 0) {
-            console.log('✅ ChatInterface: Using cached welcome questions from database');
+            logger.log('✅ ChatInterface: Using cached welcome questions from database');
             setWelcomeQuestions(cachedQuestions.questions.slice(0, 4));
             return;
           }
           
           if (!error && summaries && summaries.length > 0) {
             // User has chat summaries - generate questions based on them
-            console.log('💡 ChatInterface: User has chat summaries, generating questions based on summaries');
+            logger.log('💡 ChatInterface: User has chat summaries, generating questions based on summaries');
             const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
             const summaryText = summaries.map(s => s.summary).join('\n\n');
             
@@ -177,20 +178,20 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
               
               if (response.data?.questions && Array.isArray(response.data.questions)) {
                 setWelcomeQuestions(response.data.questions.slice(0, 4));
-                console.log('✅ ChatInterface: Generated welcome questions from summaries:', response.data.questions.slice(0, 4));
+                logger.log('✅ ChatInterface: Generated welcome questions from summaries:', response.data.questions.slice(0, 4));
                 return;
               }
             } catch (summaryError) {
-              console.warn('⚠️ ChatInterface: Error generating questions from summaries:', summaryError);
+              logger.warn('⚠️ ChatInterface: Error generating questions from summaries:', summaryError);
             }
           }
         } catch (summaryCheckError) {
-          console.warn('⚠️ ChatInterface: Error checking chat summaries:', summaryCheckError);
+          logger.warn('⚠️ ChatInterface: Error checking chat summaries:', summaryCheckError);
         }
       }
       
       // Fallback: use generic questions if no summaries or error
-      console.log('💡 ChatInterface: Using generic welcome questions');
+      logger.log('💡 ChatInterface: Using generic welcome questions');
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
       const response = await axios.get(`${backendUrl}/v1/suggested-questions`);
       
@@ -198,9 +199,9 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       
       if (questions.length > 0) {
         setWelcomeQuestions(questions.slice(0, 4));
-        console.log('✅ ChatInterface: Loaded welcome questions:', questions.slice(0, 4));
+        logger.log('✅ ChatInterface: Loaded welcome questions:', questions.slice(0, 4));
       } else {
-        console.log('⚠️ ChatInterface: No suggested questions returned from API. Response:', response.data);
+        logger.log('⚠️ ChatInterface: No suggested questions returned from API. Response:', response.data);
         setWelcomeQuestions([
           "What are the top performing product groups by sales volume?",
           "Which entities have the highest sales in the most recent period?",
@@ -209,8 +210,8 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         ]);
       }
     } catch (error: any) {
-      console.error("❌ ChatInterface: Failed to fetch suggested questions:", error);
-      console.error("❌ ChatInterface: Error details:", error.response?.data || error.message);
+      logger.error("❌ ChatInterface: Failed to fetch suggested questions:", error);
+      logger.error("❌ ChatInterface: Error details:", error.response?.data || error.message);
       setWelcomeQuestions([
         "What are the top performing product groups by sales volume?",
         "Which entities have the highest sales in the most recent period?",
@@ -226,7 +227,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
          useEffect(() => {
            const initializeUser = async () => {
              try {
-               console.log('🔄 ChatInterface: useEffect triggered with conversationId:', conversationId);
+               logger.log('🔄 ChatInterface: useEffect triggered with conversationId:', conversationId);
                
               // If just promoting a temp session to a real one, keep current UI intact
              if (skipNextInitRef.current) {
@@ -234,7 +235,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                if (conversationId) {
                  setSessionId(conversationId);
                }
-               console.log('⏭️ Skipping reset due to session promotion - keeping all UI state');
+               logger.log('⏭️ Skipping reset due to session promotion - keeping all UI state');
                return; // CRITICAL: Don't continue execution - keep current messages/state
              } else {
                // Reset state when switching conversations normally (e.g., clicking "New Chat")
@@ -252,14 +253,14 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                  await createOrUpdateProfile(user);
                  
                  if (conversationId) {
-                   console.log('🔍 ChatInterface: Loading existing conversation:', conversationId);
-                   console.log('🔍 ChatInterface: conversationId type:', typeof conversationId);
-                   console.log('🔍 ChatInterface: conversationId length:', conversationId?.length);
+                   logger.log('🔍 ChatInterface: Loading existing conversation:', conversationId);
+                   logger.log('🔍 ChatInterface: conversationId type:', typeof conversationId);
+                   logger.log('🔍 ChatInterface: conversationId length:', conversationId?.length);
                    
                    // Load existing conversation from Supabase
                    const dbMessages = await getSessionMessages(conversationId);
-                   console.log('📋 ChatInterface: Loaded messages:', dbMessages.length);
-                   console.log('📋 ChatInterface: Raw messages data:', dbMessages);
+                   logger.log('📋 ChatInterface: Loaded messages:', dbMessages.length);
+                   logger.log('📋 ChatInterface: Raw messages data:', dbMessages);
                    
                    if (dbMessages.length > 0) {
                      const formattedMessages = dbMessages.map((msg: ChatMessage) => {
@@ -293,31 +294,31 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                          isTyping: false
                        };
                      });
-                     console.log('📝 ChatInterface: Formatted messages:', formattedMessages);
+                     logger.log('📝 ChatInterface: Formatted messages:', formattedMessages);
                      setMessages(formattedMessages);
                      setSessionId(conversationId);
-                     console.log('✅ ChatInterface: Set sessionId to:', conversationId);
-                     console.log('✅ ChatInterface: Set messages count:', formattedMessages.length);
+                     logger.log('✅ ChatInterface: Set sessionId to:', conversationId);
+                     logger.log('✅ ChatInterface: Set messages count:', formattedMessages.length);
                    } else {
                      // New sessions show ChatGPT-style welcome interface (no messages needed)
-                  console.log('ℹ️ ChatInterface: New session with no messages, showing welcome interface');
+                  logger.log('ℹ️ ChatInterface: New session with no messages, showing welcome interface');
                   if (messages.length === 0) setMessages([]);
                      setSessionId(conversationId);
                      // Fetch welcome questions
                      fetchSuggestedQuestions();
                    }
                  } else {
-                  console.log('ℹ️ ChatInterface: No conversationId, showing welcome interface');
+                  logger.log('ℹ️ ChatInterface: No conversationId, showing welcome interface');
                   if (messages.length === 0) setMessages([]);
                    // Fetch welcome questions
                    fetchSuggestedQuestions();
                  }
                } else {
-                console.log('❌ ChatInterface: No user found, showing welcome interface');
+                logger.log('❌ ChatInterface: No user found, showing welcome interface');
                 if (messages.length === 0) setMessages([]);
                }
              } catch (error) {
-              console.error('❌ ChatInterface: Error initializing user:', error);
+              logger.error('❌ ChatInterface: Error initializing user:', error);
               if (messages.length === 0) setMessages([]);
              }
            };
@@ -333,7 +334,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
 
   const createSession = async () => {
     if (!userId) {
-      console.error('No user ID available for creating session');
+      logger.error('No user ID available for creating session');
       return;
     }
 
@@ -343,7 +344,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         setSessionId(newSessionId);
       }
     } catch (error) {
-      console.error('Error creating session:', error);
+      logger.error('Error creating session:', error);
     }
   };
 
@@ -354,13 +355,13 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
 
     // Use the current session ID (should always exist now)
     let currentSessionId = conversationId || sessionId;
-    console.log('ℹ️ ChatInterface: Using session:', currentSessionId);
+    logger.log('ℹ️ ChatInterface: Using session:', currentSessionId);
 
     // Check if this is a temporary session (not saved to DB yet)
     if (currentSessionId && currentSessionId.startsWith('temp_')) {
-      console.log('🆕 ChatInterface: Temporary session detected, creating real session in DB...');
+      logger.log('🆕 ChatInterface: Temporary session detected, creating real session in DB...');
       if (!userId) {
-        console.error('No user ID available for creating session');
+        logger.error('No user ID available for creating session');
         return;
       }
       
@@ -376,9 +377,9 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         if (onSessionCreated) {
           onSessionCreated(tempId, realSessionId);
         }
-        console.log('✅ ChatInterface: Real session created:', realSessionId, 'replacing temporary:', tempId);
+        logger.log('✅ ChatInterface: Real session created:', realSessionId, 'replacing temporary:', tempId);
       } else {
-        console.error('Failed to create real session');
+        logger.error('Failed to create real session');
         return;
       }
     }
@@ -477,8 +478,8 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       clearTimeout(analyzeTimer);
 
       // Animate backend progress steps one by one
-      console.log('📊 Full backend response:', response.data);
-      console.log('📊 Backend progress steps:', response.data.progress_steps);
+      logger.log('📊 Full backend response:', response.data);
+      logger.log('📊 Backend progress steps:', response.data.progress_steps);
       
       if (response.data.progress_steps && Array.isArray(response.data.progress_steps) && response.data.progress_steps.length > 0) {
         const backendSteps = response.data.progress_steps.map((step: any) => {
@@ -490,7 +491,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
           return message;
         });
         
-        console.log('✨ Formatted processing steps:', backendSteps);
+        logger.log('✨ Formatted processing steps:', backendSteps);
         
         // Animate steps appearing one by one with 150ms delay between each
         setProcessingSteps([backendSteps[0]]);
@@ -546,12 +547,12 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         // Check if this session has "New Chat" title (indicating it's a new session)
         const isNewSession = conversationTitle === 'New Chat';
         if (isNewSession) {
-          console.log('🏷️ ChatInterface: Generating title for new session:', currentSessionId);
+          logger.log('🏷️ ChatInterface: Generating title for new session:', currentSessionId);
           generateTitle(textToSend, currentSessionId);
         }
       }
     } catch (error) {
-      console.error("Failed to send message:", error);
+      logger.error("Failed to send message:", error);
       setProcessingSteps(prev => [...prev, 'Error occurred']);
       
       // Remove the placeholder assistant message if it exists
@@ -579,7 +580,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
 
   const generateTitle = async (firstMessage: string, targetSessionId: string) => {
     try {
-      console.log('🏷️ ChatInterface: Generating title for message:', firstMessage.substring(0, 50) + '...');
+      logger.log('🏷️ ChatInterface: Generating title for message:', firstMessage.substring(0, 50) + '...');
       
       // Clean the message (remove file references for title generation)
       let cleanMessage = firstMessage;
@@ -599,7 +600,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         },
       });
       
-      console.log('🏷️ ChatInterface: AI title response:', response.data);
+      logger.log('🏷️ ChatInterface: AI title response:', response.data);
       
       if (response.data.title && onTitleGenerated) {
         // Clean up the title response (from /v1/generate-title endpoint)
@@ -622,29 +623,29 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
           title = title.substring(0, 47) + '...';
         }
         
-        console.log('✅ ChatInterface: AI title generated successfully:', title);
+        logger.log('✅ ChatInterface: AI title generated successfully:', title);
         onTitleGenerated(title, targetSessionId);
         setTitleGenerated(true);
       } else {
-        console.log('⚠️ ChatInterface: AI title generation failed or returned empty title');
+        logger.log('⚠️ ChatInterface: AI title generation failed or returned empty title');
         // Fallback: use first 50 chars of the message
         if (onTitleGenerated) {
           const fallbackTitle = firstMessage.length > 50 
             ? firstMessage.substring(0, 50) + "..." 
             : firstMessage;
-          console.log('🔄 ChatInterface: Using fallback title:', fallbackTitle);
+          logger.log('🔄 ChatInterface: Using fallback title:', fallbackTitle);
           onTitleGenerated(fallbackTitle, targetSessionId);
           setTitleGenerated(true);
         }
       }
     } catch (error) {
-      console.error("❌ ChatInterface: Failed to generate title:", error);
+      logger.error("❌ ChatInterface: Failed to generate title:", error);
       // Fallback: use first 50 chars of the message
       if (onTitleGenerated) {
         const fallbackTitle = firstMessage.length > 50 
           ? firstMessage.substring(0, 50) + "..." 
           : firstMessage;
-        console.log('🔄 ChatInterface: Using error fallback title:', fallbackTitle);
+        logger.log('🔄 ChatInterface: Using error fallback title:', fallbackTitle);
         onTitleGenerated(fallbackTitle, targetSessionId);
         setTitleGenerated(true);
       }
@@ -656,14 +657,14 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
     
     try {
       setLoadingInChatSuggestions(true);
-      console.log('💡 ChatInterface: Fetching cached suggested questions...');
+      logger.log('💡 ChatInterface: Fetching cached suggested questions...');
       
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
       const lastUserMessage = messages.filter(msg => msg.role === 'user').slice(-1)[0]?.content || '';
       const currentSessionId = conversationId || sessionId;
       
       if (!currentSessionId) {
-        console.warn('⚠️ ChatInterface: No session ID, cannot fetch cached suggestions');
+        logger.warn('⚠️ ChatInterface: No session ID, cannot fetch cached suggestions');
         return;
       }
       
@@ -680,7 +681,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
         });
         
         if (cachedResponse.data?.cached && cachedResponse.data.questions?.length > 0) {
-          console.log('✅ ChatInterface: Using cached suggested questions from database');
+          logger.log('✅ ChatInterface: Using cached suggested questions from database');
           setMessages((prev) => 
             prev.map((msg, index) => 
               index === messages.length - 1 && msg.role === 'assistant'
@@ -691,11 +692,11 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
           return; // Successfully loaded from cache
         }
       } catch (cacheError) {
-        console.warn('⚠️ ChatInterface: Error fetching cached suggestions:', cacheError);
+        logger.warn('⚠️ ChatInterface: Error fetching cached suggestions:', cacheError);
       }
       
       // If no cache, generate new questions
-      console.log('💡 ChatInterface: No cache found, generating new suggested questions...');
+      logger.log('💡 ChatInterface: No cache found, generating new suggested questions...');
       const url = lastUserMessage 
         ? `${backendUrl}/v1/suggested-questions?user_message=${encodeURIComponent(lastUserMessage)}`
         : `${backendUrl}/v1/suggested-questions`;
@@ -726,19 +727,19 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
             formData.append('context_hash', contextHash);
             
             await axios.post(`${backendUrl}/v1/store-suggestions`, formData);
-            console.log('✅ ChatInterface: Stored suggested questions in database');
+            logger.log('✅ ChatInterface: Stored suggested questions in database');
           } catch (storeError) {
-            console.warn('⚠️ ChatInterface: Failed to store suggestions:', storeError);
+            logger.warn('⚠️ ChatInterface: Failed to store suggestions:', storeError);
           }
         }
         
-        console.log('✅ ChatInterface: Added suggested questions to last message');
+        logger.log('✅ ChatInterface: Added suggested questions to last message');
       } else {
-        console.log('⚠️ ChatInterface: No suggested questions returned from API. Response:', response.data);
+        logger.log('⚠️ ChatInterface: No suggested questions returned from API. Response:', response.data);
       }
     } catch (error: any) {
-      console.error("❌ ChatInterface: Failed to generate suggested questions:", error);
-      console.error("❌ ChatInterface: Error details:", error.response?.data || error.message);
+      logger.error("❌ ChatInterface: Failed to generate suggested questions:", error);
+      logger.error("❌ ChatInterface: Error details:", error.response?.data || error.message);
     } finally {
       setLoadingInChatSuggestions(false);
     }

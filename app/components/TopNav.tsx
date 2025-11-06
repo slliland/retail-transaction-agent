@@ -8,6 +8,7 @@ import { useState, useRef, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/app/contexts/UserContext";
+import { logger } from "@/lib/logger";
 
 interface TopNavProps {
   onMenuClick: () => void;
@@ -44,7 +45,7 @@ export default function TopNav({ onMenuClick, userEmail: propUserEmail, avatarUr
       localStorage.removeItem("userEmail");
       router.push("/");
     } catch (error) {
-      console.error("Error signing out:", error);
+      logger.error("Error signing out:", error);
     }
   };
 
