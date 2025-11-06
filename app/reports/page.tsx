@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { logger } from "@/lib/logger";
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
@@ -146,7 +147,7 @@ export default function ReportGeneratorPage() {
           setUserEmail(savedEmail);
         }
       } catch (error) {
-        console.error('Error loading user:', error);
+        logger.error('Error loading user:', error);
         const savedEmail = localStorage.getItem('userEmail');
         setUserEmail(savedEmail);
       }
@@ -167,15 +168,15 @@ export default function ReportGeneratorPage() {
   
   // Debug: Log when searchQuery changes
   useEffect(() => {
-    console.log('🔍 searchQuery state changed to:', searchQuery);
+    logger.log('🔍 searchQuery state changed to:', searchQuery);
   }, [searchQuery]);
 
   // Auto-regenerate report when period changes and report already exists
   useEffect(() => {
-    console.log('🔄 periodMonths changed to:', periodMonths, 'report exists:', !!report, 'selectedEntity:', selectedEntity, 'loading:', loading);
+    logger.log('🔄 periodMonths changed to:', periodMonths, 'report exists:', !!report, 'selectedEntity:', selectedEntity, 'loading:', loading);
     if (report && selectedEntity && !loading) {
       // Only regenerate if we have an existing report
-      console.log('🔄 Auto-regenerating report with periodMonths:', periodMonths);
+      logger.log('🔄 Auto-regenerating report with periodMonths:', periodMonths);
       generateReport();
     }
   }, [periodMonths]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -202,8 +203,8 @@ export default function ReportGeneratorPage() {
     setLoading(true);
     try {
       const url = `http://localhost:8000/v1/report/report/${selectedEntity}?period_months=${periodMonths}`;
-      console.log('📊 Generating report for entity:', selectedEntity, 'with period_months:', periodMonths);
-      console.log('📡 Request URL:', url);
+      logger.log('📊 Generating report for entity:', selectedEntity, 'with period_months:', periodMonths);
+      logger.log('📡 Request URL:', url);
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -218,7 +219,7 @@ export default function ReportGeneratorPage() {
       const data = await response.json();
       setReport(data);
     } catch (error) {
-      console.error('Error generating report:', error);
+      logger.error('Error generating report:', error);
       alert('Failed to generate report. Please try again.');
     } finally {
       setLoading(false);
@@ -291,17 +292,17 @@ export default function ReportGeneratorPage() {
   // Debug entities state (optional - can be removed if not needed)
   React.useEffect(() => {
     if (entities.length > 0) {
-      console.log('✅ [Reports] Entities loaded:', entities.length, 'entities');
+      logger.log('✅ [Reports] Entities loaded:', entities.length, 'entities');
     }
   }, [entities]);
 
   // Optimized filtering with all matches - no limits, using debounced query
   const filteredEntities = React.useMemo(() => {
-    console.log('🔍 Filtering entities. Total entities:', entities.length, 'Debounced search query:', debouncedSearchQuery);
+    logger.log('🔍 Filtering entities. Total entities:', entities.length, 'Debounced search query:', debouncedSearchQuery);
     
     if (!debouncedSearchQuery) {
       const result = entities.slice(0, 100); // Show first 100 by default
-      console.log('📋 No search query, showing first 100 entities:', result.length);
+      logger.log('📋 No search query, showing first 100 entities:', result.length);
       return result;
     }
     
@@ -341,8 +342,8 @@ export default function ReportGeneratorPage() {
     ];
     
     const result = allMatches.map(item => item.entity);
-    console.log('✨ Filtered entities:', result.length, 'matches for query:', debouncedSearchQuery);
-    console.log(`   📊 Breakdown: ${exactMatches.length} exact, ${prefixMatches.length} prefix, ${containsMatches.length} contains, ${fuzzyMatches.length} fuzzy`);
+    logger.log('✨ Filtered entities:', result.length, 'matches for query:', debouncedSearchQuery);
+    logger.log(`   📊 Breakdown: ${exactMatches.length} exact, ${prefixMatches.length} prefix, ${containsMatches.length} contains, ${fuzzyMatches.length} fuzzy`);
     
     return result;
   }, [entities, debouncedSearchQuery]);
@@ -356,7 +357,7 @@ export default function ReportGeneratorPage() {
   }, [filteredEntities, showAllEntities]);
 
   const handleEntitySelect = (entity: string) => {
-    console.log('🔵 handleEntitySelect called with entity:', entity);
+    logger.log('🔵 handleEntitySelect called with entity:', entity);
     
     // Immediately update the input field value if ref exists
     if (searchInputRef.current) {
@@ -376,7 +377,7 @@ export default function ReportGeneratorPage() {
       searchInputRef.current.dispatchEvent(event);
     }
     
-    console.log('✅ Entity selected, states updated to:', entity);
+    logger.log('✅ Entity selected, states updated to:', entity);
   };
 
   const handleShowMore = () => {
@@ -459,7 +460,7 @@ export default function ReportGeneratorPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('Error downloading PDF:', error);
+      logger.error('Error downloading PDF:', error);
       alert('Failed to download PDF. Please try again.');
     }
   };
@@ -551,13 +552,13 @@ export default function ReportGeneratorPage() {
                               onMouseDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log('🖱️ MouseDown on entity:', entity);
+                                logger.log('🖱️ MouseDown on entity:', entity);
                                 handleEntitySelect(entity);
                               }}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log('🖱️ Clicked on entity:', entity);
+                                logger.log('🖱️ Clicked on entity:', entity);
                                 handleEntitySelect(entity);
                               }}
                               className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0"
@@ -588,13 +589,13 @@ export default function ReportGeneratorPage() {
                           value={periodMonths.toString()} 
                           onValueChange={(value) => {
                             const numValue = parseInt(value, 10);
-                            console.log('📅 Analysis Period dropdown changed from', periodMonths, 'to:', numValue, 'raw value:', value);
+                            logger.log('📅 Analysis Period dropdown changed from', periodMonths, 'to:', numValue, 'raw value:', value);
                             if (isNaN(numValue)) {
-                              console.error('❌ Invalid period value:', value);
+                              logger.error('❌ Invalid period value:', value);
                               return;
                             }
                             setPeriodMonths(numValue);
-                            console.log('✅ periodMonths state updated to:', numValue);
+                            logger.log('✅ periodMonths state updated to:', numValue);
                           }}
                         >
                           <SelectTrigger>

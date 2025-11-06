@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Mail, Bell, Send, Calendar, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
@@ -166,7 +167,7 @@ export default function SettingsPage() {
           router.push("/login");
         }
       } catch (error) {
-        console.error("Error loading user data:", error);
+        logger.error("Error loading user data:", error);
         // Don't redirect on error, just use defaults
       }
     };
@@ -207,13 +208,13 @@ export default function SettingsPage() {
             
             setLocation(locationString);
           } catch (error) {
-            console.error("Error getting location name:", error);
+            logger.error("Error getting location name:", error);
             // Fallback to coordinates
             setLocation(`${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`);
           }
         },
         (error) => {
-          console.error("Error getting location:", error);
+          logger.error("Error getting location:", error);
           switch (error.code) {
             case error.PERMISSION_DENIED:
               setLocation("Location access denied");
@@ -249,7 +250,7 @@ export default function SettingsPage() {
         await signOut();
       }
     } catch (error) {
-      console.error("Error signing out:", error);
+      logger.error("Error signing out:", error);
     } finally {
       localStorage.removeItem("userEmail");
       router.push("/login");
@@ -289,7 +290,7 @@ export default function SettingsPage() {
         setSubscriptionLoaded(true);
       }
     } catch (error) {
-      console.error("Error loading subscription status:", error);
+      logger.error("Error loading subscription status:", error);
       // On error, mark as loaded to use cached value (prevents infinite loading state)
       setSubscriptionLoaded(true);
     }
@@ -309,7 +310,7 @@ export default function SettingsPage() {
         setAvailableSummaries(data.summaries || []);
       }
     } catch (error) {
-      console.error("Error loading summaries:", error);
+      logger.error("Error loading summaries:", error);
     } finally {
       setSummariesLoading(false);
     }
@@ -352,7 +353,7 @@ export default function SettingsPage() {
                 throw new Error(errorData.detail || 'Failed to send email');
               }
             } catch (error: any) {
-              console.error("Error sending email:", error);
+              logger.error("Error sending email:", error);
               showNotification(`Failed to send email: ${error.message || 'Unknown error'}`, 'error');
             } finally {
               setSendingEmail(null);
@@ -400,7 +401,7 @@ export default function SettingsPage() {
         throw new Error('Failed to update subscription');
       }
     } catch (error) {
-      console.error("Error updating subscription:", error);
+      logger.error("Error updating subscription:", error);
       showNotification('Failed to update subscription. Please try again.', 'error');
     } finally {
       setSubscriptionLoading(false);
@@ -546,7 +547,7 @@ export default function SettingsPage() {
                         
                         if (uploadError) {
                           // If bucket doesn't exist or upload fails, try to create bucket or use public URL
-                          console.error('Upload error:', uploadError);
+                          logger.error('Upload error:', uploadError);
                           
                           // Alternative: Convert to base64 and store URL directly
                           const reader = new FileReader();
@@ -569,7 +570,7 @@ export default function SettingsPage() {
                               .eq('user_id', userId);
                             
                             if (updateError) {
-                              console.error('Error updating profile:', updateError);
+                              logger.error('Error updating profile:', updateError);
                               showNotification('Failed to update profile picture', 'error');
                             } else {
                               setAvatarUrl(newAvatarUrl);
@@ -597,7 +598,7 @@ export default function SettingsPage() {
                           .eq('user_id', userId);
                         
                         if (updateError) {
-                          console.error('Error updating profile:', updateError);
+                          logger.error('Error updating profile:', updateError);
                           showNotification('Failed to update profile picture', 'error');
                         } else {
                           setAvatarUrl(publicUrl);
@@ -606,7 +607,7 @@ export default function SettingsPage() {
                           setTimeout(() => window.location.reload(), 1000);
                         }
                       } catch (error) {
-                        console.error('Error uploading avatar:', error);
+                        logger.error('Error uploading avatar:', error);
                         showNotification('Failed to upload profile picture', 'error');
                       } finally {
                         setUploadingAvatar(false);

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { logger } from "@/lib/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -22,7 +23,7 @@ export const signInWithGitHub = async () => {
   })
   
   if (error) {
-    console.error('GitHub login error:', error)
+    logger.error('GitHub login error:', error)
     throw error
   }
   
@@ -43,7 +44,7 @@ export const signInWithGoogle = async () => {
   })
   
   if (error) {
-    console.error('Google login error:', error)
+    logger.error('Google login error:', error)
     throw error
   }
   
@@ -62,7 +63,7 @@ export const signInWithEmail = async (email: string, password: string) => {
   })
   
   if (error) {
-    console.error('Email login error:', error)
+    logger.error('Email login error:', error)
     throw error
   }
   
@@ -81,7 +82,7 @@ export const signUpWithEmail = async (email: string, password: string) => {
   })
   
   if (error) {
-    console.error('Email signup error:', error)
+    logger.error('Email signup error:', error)
     throw error
   }
   
@@ -97,7 +98,7 @@ export const signOut = async () => {
   const { error } = await supabase.auth.signOut()
   
   if (error) {
-    console.error('Sign out error:', error)
+    logger.error('Sign out error:', error)
     throw error
   }
 }
@@ -126,7 +127,7 @@ export const createOrUpdateProfile = async (user: any) => {
       .eq('user_id', user.id)
 
     if (selectError) {
-      console.error('Error checking for existing profiles:', selectError)
+      logger.error('Error checking for existing profiles:', selectError)
       return null
     }
 
@@ -143,9 +144,9 @@ export const createOrUpdateProfile = async (user: any) => {
           .in('id', duplicateIds)
         
         if (deleteError) {
-          console.error('Error deleting duplicate profiles:', deleteError)
+          logger.error('Error deleting duplicate profiles:', deleteError)
         } else {
-          console.log(`🗑️ Deleted ${duplicateIds.length} duplicate profiles`)
+          logger.log(`🗑️ Deleted ${duplicateIds.length} duplicate profiles`)
         }
       }
 
@@ -162,11 +163,11 @@ export const createOrUpdateProfile = async (user: any) => {
         .single()
 
       if (error) {
-        console.error('Error updating profile:', error)
+        logger.error('Error updating profile:', error)
         return null
       }
 
-      console.log('✅ Profile updated:', data)
+      logger.log('✅ Profile updated:', data)
       return data
     } 
     // If no profile exists, create a new one
@@ -184,15 +185,15 @@ export const createOrUpdateProfile = async (user: any) => {
         .single()
 
       if (error) {
-        console.error('Error creating profile:', error)
+        logger.error('Error creating profile:', error)
         return null
       }
 
-      console.log('✅ Profile created:', data)
+      logger.log('✅ Profile created:', data)
       return data
     }
   } catch (error) {
-    console.error('Error in createOrUpdateProfile:', error)
+    logger.error('Error in createOrUpdateProfile:', error)
     return null
   }
 }
@@ -211,13 +212,13 @@ export const getUserProfile = async (userId: string) => {
       .single()
 
     if (error) {
-      console.error('Error fetching profile:', error)
+      logger.error('Error fetching profile:', error)
       return null
     }
 
     return data
   } catch (error) {
-    console.error('Error in getUserProfile:', error)
+    logger.error('Error in getUserProfile:', error)
     return null
   }
 }

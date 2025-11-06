@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { logger } from "@/lib/logger";
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,10 +79,10 @@ export default function SpotlightPage() {
           cacheMap.set(key, value as { dataUrl: string; duration: number });
         });
         setAudioCache(cacheMap);
-        console.log('✅ Loaded audio cache from localStorage:', cacheMap.size, 'items');
+        logger.log('✅ Loaded audio cache from localStorage:', cacheMap.size, 'items');
       }
     } catch (e) {
-      console.warn('Failed to load audio cache from localStorage:', e);
+      logger.warn('Failed to load audio cache from localStorage:', e);
     }
   }, []);
 
@@ -125,7 +126,7 @@ export default function SpotlightPage() {
             }
         }
       } catch (error) {
-        console.error('Error loading conversations:', error);
+        logger.error('Error loading conversations:', error);
       }
     };
 
@@ -143,11 +144,11 @@ export default function SpotlightPage() {
 
       try {
         setLoading(true);
-        console.log('🔍 Spotlight: Loading user sessions and messages...');
+        logger.log('🔍 Spotlight: Loading user sessions and messages...');
 
         // Get all sessions for the user
         const sessions = await getUserSessions(userId);
-        console.log('📋 Spotlight: Found sessions:', sessions.length);
+        logger.log('📋 Spotlight: Found sessions:', sessions.length);
 
         if (sessions.length === 0) {
           setHasMessages(false);
@@ -177,7 +178,7 @@ export default function SpotlightPage() {
           }
         }
 
-        console.log('📝 Spotlight: Total messages found:', allMessages.length);
+        logger.log('📝 Spotlight: Total messages found:', allMessages.length);
 
         if (allMessages.length === 0) {
           setHasMessages(false);
@@ -216,7 +217,7 @@ export default function SpotlightPage() {
         setGroupedMessages(filteredGrouped);
         
       } catch (error) {
-        console.error('❌ Error loading messages:', error);
+        logger.error('❌ Error loading messages:', error);
         setHasMessages(false);
       } finally {
         setLoading(false);
@@ -289,12 +290,12 @@ export default function SpotlightPage() {
         signal: AbortSignal.timeout(5000) // 5 second timeout for health check
       });
       if (!healthCheck.ok) {
-        console.warn('[Spotlight] ⚠️ Backend health check failed:', healthCheck.status);
+        logger.warn('[Spotlight] ⚠️ Backend health check failed:', healthCheck.status);
       } else {
-        console.log('[Spotlight] ✅ Backend is reachable');
+        logger.log('[Spotlight] ✅ Backend is reachable');
       }
     } catch (healthError) {
-      console.error('[Spotlight] ❌ Backend is not reachable. Is it running?', healthError);
+      logger.error('[Spotlight] ❌ Backend is not reachable. Is it running?', healthError);
       // Still try to fetch summaries, but we know there's likely a connection issue
     }
 
@@ -309,7 +310,7 @@ export default function SpotlightPage() {
         todayEnd.setHours(23, 59, 59, 999);
         const isCurrentPeriod = group.startDate.getTime() <= todayEnd.getTime() && group.endDate.getTime() >= todayStart.getTime();
         if (isCurrentPeriod) {
-          console.log(`[Spotlight] ⏭️ Skipping current ${timeRange} period to save tokens: ${periodKey}`);
+          logger.log(`[Spotlight] ⏭️ Skipping current ${timeRange} period to save tokens: ${periodKey}`);
           // Ensure loading state is not left true if previously set
           setSummaries(prev => {
             const existing = prev.get(periodKey);
@@ -325,7 +326,7 @@ export default function SpotlightPage() {
           continue;
         }
       } catch (e) {
-        console.warn('[Spotlight] Failed to evaluate current period check:', e);
+        logger.warn('[Spotlight] Failed to evaluate current period check:', e);
       }
       
       // Check if summary already exists using functional update
@@ -349,7 +350,7 @@ export default function SpotlightPage() {
       
       // Skip API call if summary already exists
       if (!shouldFetch) {
-        console.log(`[Spotlight] ⏭️ Skipping summary fetch for ${periodKey}, already exists`);
+        logger.log(`[Spotlight] ⏭️ Skipping summary fetch for ${periodKey}, already exists`);
         continue;
       }
 
@@ -360,7 +361,7 @@ export default function SpotlightPage() {
           content: message.content
         }));
 
-        console.log(`[Spotlight] 🔄 Fetching summary for period: ${periodKey}`, {
+        logger.log(`[Spotlight] 🔄 Fetching summary for period: ${periodKey}`, {
           userId,
           period_start: group.startDate.toISOString().split('T')[0],
           period_end: group.endDate.toISOString().split('T')[0],
@@ -393,17 +394,17 @@ export default function SpotlightPage() {
         } catch (fetchError: any) {
           clearTimeout(timeoutId);
           if (fetchError.name === 'AbortError') {
-            console.error(`[Spotlight] ⏱️ Request timeout after 60 seconds`);
+            logger.error(`[Spotlight] ⏱️ Request timeout after 60 seconds`);
             throw new Error('Request timeout: Backend took too long to respond');
           }
           throw fetchError;
         }
 
-        console.log(`[Spotlight] 📡 Summary response:`, response.status, response.statusText);
+        logger.log(`[Spotlight] 📡 Summary response:`, response.status, response.statusText);
 
         if (response.ok) {
           const data = await response.json();
-          console.log(`[Spotlight] ✅ Summary received:`, { 
+          logger.log(`[Spotlight] ✅ Summary received:`, { 
             cached: data.cached, 
             summary_length: data.summary?.length || 0,
             summary_preview: data.summary?.substring(0, 100) || 'empty'
@@ -420,7 +421,7 @@ export default function SpotlightPage() {
           });
         } else {
           const errorText = await response.text().catch(() => 'Unknown error');
-          console.error(`[Spotlight] ❌ Failed to generate summary: ${response.status} ${response.statusText}`, errorText);
+          logger.error(`[Spotlight] ❌ Failed to generate summary: ${response.status} ${response.statusText}`, errorText);
           setSummaries(prev => {
             const newMap = new Map(prev);
             newMap.set(periodKey, {
@@ -432,8 +433,8 @@ export default function SpotlightPage() {
           });
         }
       } catch (error: any) {
-        console.error('[Spotlight] ❌ Error fetching summary:', error);
-        console.error('[Spotlight] ❌ Error details:', {
+        logger.error('[Spotlight] ❌ Error fetching summary:', error);
+        logger.error('[Spotlight] ❌ Error details:', {
           name: error?.name,
           message: error?.message,
           stack: error?.stack
@@ -589,7 +590,7 @@ export default function SpotlightPage() {
         });
         
         audio.addEventListener('error', (e) => {
-          console.error('Audio playback error for', periodKey, e);
+          logger.error('Audio playback error for', periodKey, e);
           updatePlayingState(periodKey, { isPlaying: false, isPaused: false, progress: 0 });
           setAudioLoading(prev => {
             const newMap = new Map(prev);
@@ -600,7 +601,7 @@ export default function SpotlightPage() {
         
         await audio.play();
       } catch (error) {
-        console.error('Error playing cached audio:', error);
+        logger.error('Error playing cached audio:', error);
         setAudioLoading(prev => {
           const newMap = new Map(prev);
           newMap.delete(periodKey);
@@ -633,7 +634,7 @@ export default function SpotlightPage() {
         requestBody.period_start = periodStart;
         requestBody.period_end = periodEnd;
         requestBody.time_range = timeRangeParam;
-        console.log('📦 [TTS] Including caching params:', { userId, periodStart, periodEnd, timeRangeParam });
+        logger.log('📦 [TTS] Including caching params:', { userId, periodStart, periodEnd, timeRangeParam });
       }
       
       // Call backend TTS endpoint
@@ -681,9 +682,9 @@ export default function SpotlightPage() {
                   cacheData[key] = value;
                 });
                 localStorage.setItem('audioCache', JSON.stringify(cacheData));
-                console.log('✅ Cached audio for', periodKey);
+                logger.log('✅ Cached audio for', periodKey);
               } catch (e) {
-                console.warn('Failed to cache audio to localStorage:', e);
+                logger.warn('Failed to cache audio to localStorage:', e);
               }
               
               return newCache;
@@ -702,7 +703,7 @@ export default function SpotlightPage() {
           });
           
           audio.addEventListener('error', (e) => {
-            console.error('Audio playback error for', periodKey, e);
+            logger.error('Audio playback error for', periodKey, e);
             updatePlayingState(periodKey, { isPlaying: false, isPaused: false, progress: 0 });
             setAudioLoading(prev => {
               const newMap = new Map(prev);
@@ -715,7 +716,7 @@ export default function SpotlightPage() {
         };
         reader.readAsDataURL(blob);
       } else {
-        console.error('TTS failed:', response.statusText);
+        logger.error('TTS failed:', response.statusText);
         updatePlayingState(periodKey, { isPlaying: false, isPaused: false });
         setAudioLoading(prev => {
           const newMap = new Map(prev);
@@ -724,7 +725,7 @@ export default function SpotlightPage() {
         });
       }
     } catch (error) {
-      console.error('TTS error:', error);
+      logger.error('TTS error:', error);
       updatePlayingState(periodKey, { isPlaying: false, isPaused: false });
       setAudioLoading(prev => {
         const newMap = new Map(prev);

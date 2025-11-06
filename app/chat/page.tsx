@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
 import { useRouter } from "next/navigation";
 import TopNav from "../components/TopNav";
 import Sidebar from "../components/Sidebar";
@@ -25,15 +26,15 @@ export default function ChatPage() {
              if (!contextUserId) return;
              
              try {
-               console.log('🔍 ChatPage: Loading conversations...');
-               console.log('👤 ChatPage: User ID from context:', contextUserId);
+               logger.log('🔍 ChatPage: Loading conversations...');
+               logger.log('👤 ChatPage: User ID from context:', contextUserId);
                const dbSessions = await getUserSessions(contextUserId);
-               console.log('📋 ChatPage: Retrieved sessions:', dbSessions.length);
+               logger.log('📋 ChatPage: Retrieved sessions:', dbSessions.length);
                if (dbSessions.length > 0) {
                  const formattedConversations = dbSessions.map((session: ChatSession) => {
                    // Smart title logic: use AI title if available, otherwise use timestamp
                    let title = session.title;
-                   console.log('🏷️ ChatPage: Processing session title:', { 
+                   logger.log('🏷️ ChatPage: Processing session title:', { 
                      sessionId: session.id, 
                      originalTitle: session.title,
                      hasTitle: !!(title && title.trim() !== '' && title !== 'New Chat')
@@ -52,9 +53,9 @@ export default function ChatPage() {
                       day: 'numeric' 
                     });
                     title = `Chat ${dateStr} ${timeStr}`;
-                    console.log('🔄 ChatPage: Using timestamp fallback title:', title);
+                    logger.log('🔄 ChatPage: Using timestamp fallback title:', title);
                   } else {
-                    console.log('✅ ChatPage: Using AI-generated title:', title);
+                    logger.log('✅ ChatPage: Using AI-generated title:', title);
                   }
                    
                    return {
@@ -63,15 +64,15 @@ export default function ChatPage() {
                      timestamp: new Date(session.created_at).toLocaleString(),
                    };
                  });
-                 console.log('✅ ChatPage: Setting conversations:', formattedConversations.length);
+                 logger.log('✅ ChatPage: Setting conversations:', formattedConversations.length);
                  setConversations(formattedConversations);
                  // Set the most recent conversation as selected
                  setSelectedConversationId(formattedConversations[0].id);
                } else {
-                 console.log('ℹ️ ChatPage: No sessions found for user');
+                 logger.log('ℹ️ ChatPage: No sessions found for user');
                }
              } catch (error) {
-               console.error("❌ ChatPage: Error loading conversations:", error);
+               logger.error("❌ ChatPage: Error loading conversations:", error);
              }
            };
 
@@ -91,7 +92,7 @@ export default function ChatPage() {
   }, [router, contextUserEmail]);
 
   const handleNewChat = async () => {
-    console.log('🆕 ChatPage: Creating new chat (temporary, not saved to DB yet)...');
+    logger.log('🆕 ChatPage: Creating new chat (temporary, not saved to DB yet)...');
     
     // Create a temporary session ID that will be created in DB only when user sends first message
     const tempSessionId = `temp_${Date.now()}`;
@@ -104,11 +105,11 @@ export default function ChatPage() {
     
     setConversations([newConv, ...conversations]);
     setSelectedConversationId(tempSessionId);
-    console.log('✅ ChatPage: Temporary new chat created (not in DB):', tempSessionId);
+    logger.log('✅ ChatPage: Temporary new chat created (not in DB):', tempSessionId);
   };
 
   const handleSessionCreated = (tempId: string, realId: string) => {
-    console.log('🔄 ChatPage: Replacing temporary session:', tempId, 'with real session:', realId);
+    logger.log('🔄 ChatPage: Replacing temporary session:', tempId, 'with real session:', realId);
     
     // Update the conversations list to replace temp ID with real ID
     setConversations((prev) =>
@@ -121,24 +122,24 @@ export default function ChatPage() {
     
     // Update selected conversation ID
     setSelectedConversationId(realId);
-    console.log('✅ ChatPage: Session replacement complete');
+    logger.log('✅ ChatPage: Session replacement complete');
   };
 
   const handleTitleGenerated = async (title: string, sessionId: string) => {
-    console.log('🏷️ ChatPage: Title generated:', title);
-    console.log('🏷️ ChatPage: For session:', sessionId);
+    logger.log('🏷️ ChatPage: Title generated:', title);
+    logger.log('🏷️ ChatPage: For session:', sessionId);
     
     // Update the session title in the database using the provided sessionId
     try {
       const { updateSessionTitle } = await import('@/lib/supabase-chat');
       const success = await updateSessionTitle(sessionId, title);
       if (success) {
-        console.log('✅ ChatPage: Title updated in database successfully');
+        logger.log('✅ ChatPage: Title updated in database successfully');
       } else {
-        console.error('❌ ChatPage: Failed to update title in database');
+        logger.error('❌ ChatPage: Failed to update title in database');
       }
     } catch (error) {
-      console.error('❌ ChatPage: Error updating session title in database:', error);
+      logger.error('❌ ChatPage: Error updating session title in database:', error);
     }
     
     // Update the local conversations list immediately
@@ -160,7 +161,7 @@ export default function ChatPage() {
       setSelectedConversationId(sessionId);
     }
     
-    console.log('✅ ChatPage: Local conversations list updated with new title');
+    logger.log('✅ ChatPage: Local conversations list updated with new title');
   };
 
 
@@ -177,13 +178,13 @@ export default function ChatPage() {
     
     const { id } = conversationToDelete;
     
-    console.log('🗑️ ChatPage: Starting deletion for conversation:', id);
+    logger.log('🗑️ ChatPage: Starting deletion for conversation:', id);
     
     try {
       // Delete from Supabase
       const success = await deleteSession(id);
       if (success) {
-        console.log('✅ ChatPage: Conversation deleted successfully from database');
+        logger.log('✅ ChatPage: Conversation deleted successfully from database');
         
         // Remove from conversations list
         setConversations((prev) => prev.filter((conv) => conv.id !== id));
@@ -193,7 +194,7 @@ export default function ChatPage() {
           const remainingConversations = conversations.filter((conv) => conv.id !== id);
           if (remainingConversations.length > 0) {
             setSelectedConversationId(remainingConversations[0].id);
-            console.log('✅ ChatPage: Selected next conversation:', remainingConversations[0].id);
+            logger.log('✅ ChatPage: Selected next conversation:', remainingConversations[0].id);
           } else {
             // Create a new conversation if no conversations remain
             const newConv = {
@@ -203,15 +204,15 @@ export default function ChatPage() {
             };
             setConversations([newConv]);
             setSelectedConversationId(newConv.id);
-            console.log('✅ ChatPage: Created new conversation (no remaining conversations)');
+            logger.log('✅ ChatPage: Created new conversation (no remaining conversations)');
           }
         }
       } else {
-        console.error('❌ ChatPage: Failed to delete conversation from database');
+        logger.error('❌ ChatPage: Failed to delete conversation from database');
         alert('Failed to delete conversation. Please check console for details.');
       }
     } catch (error) {
-      console.error('❌ ChatPage: Exception deleting conversation:', error);
+      logger.error('❌ ChatPage: Exception deleting conversation:', error);
       alert('Error deleting conversation. Please check console for details.');
     }
     
@@ -244,7 +245,7 @@ export default function ChatPage() {
           onTitleGenerated={handleTitleGenerated}
           onSessionCreated={handleSessionCreated}
           conversationId={(() => {
-            console.log('🔍 ChatPage: Passing conversationId to ChatInterface:', selectedConversationId);
+            logger.log('🔍 ChatPage: Passing conversationId to ChatInterface:', selectedConversationId);
             return selectedConversationId || undefined;
           })()}
           conversationTitle={conversations.find(c => c.id === selectedConversationId)?.title}

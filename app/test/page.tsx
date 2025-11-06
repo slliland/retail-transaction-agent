@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 export default function TestPage() {
   const [apiUrl, setApiUrl] = useState("");
@@ -18,23 +19,23 @@ export default function TestPage() {
 
   const testConnection = async (url: string) => {
     try {
-      console.log("Testing connection to:", url);
+      logger.log("Testing connection to:", url);
       const response = await fetch(`${url}/health`, {
         method: "GET",
         mode: "cors",
       });
-      console.log("Response:", response);
+      logger.log("Response:", response);
       
       if (response.ok) {
         const data = await response.json();
-        console.log("Data:", data);
+        logger.log("Data:", data);
         setHealthStatus("connected");
       } else {
         setHealthStatus("error");
         setError(`HTTP ${response.status}`);
       }
     } catch (err: any) {
-      console.error("Connection error:", err);
+      logger.error("Connection error:", err);
       setHealthStatus("error");
       setError(err.message);
     }

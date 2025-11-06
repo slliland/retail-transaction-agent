@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { logger } from "@/lib/logger";
 import { supabase, getCurrentUser } from '@/lib/supabase';
 
 interface UserContextType {
@@ -67,7 +68,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error('Error loading user:', error);
+        logger.error('Error loading user:', error);
         // Keep cached values on error
         const cachedEmail = localStorage.getItem('userEmail');
         if (cachedEmail) {

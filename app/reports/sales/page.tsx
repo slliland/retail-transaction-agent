@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { logger } from "@/lib/logger";
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -228,7 +229,7 @@ export default function SalesOverviewPage() {
             }
         }
       } catch (error) {
-        console.error('Error loading conversations:', error);
+        logger.error('Error loading conversations:', error);
       }
     };
 
@@ -246,11 +247,11 @@ export default function SalesOverviewPage() {
   useEffect(() => {
     // Prevent multiple simultaneous fetches
     if (loadingRef.current) {
-      console.log('⏸️ Load already in progress, skipping...');
+      logger.log('⏸️ Load already in progress, skipping...');
       return;
     }
     
-    console.log(`📊 Fetching data: period=${periodMonths}, granularity=${granularity}, entities=${entityLimit}, productGroup=${productGroup}, mode=${mode}`);
+    logger.log(`📊 Fetching data: period=${periodMonths}, granularity=${granularity}, entities=${entityLimit}, productGroup=${productGroup}, mode=${mode}`);
     
     const loadAllData = async () => {
       loadingRef.current = true;
@@ -260,7 +261,7 @@ export default function SalesOverviewPage() {
       try {
         // Fetch all data in parallel for speed
         const byEntityUrl = `http://localhost:8000/v1/report/overview/by-entity?period_months=${periodMonths}&limit=${entityLimit}&product_group=${encodeURIComponent(productGroup)}`;
-        console.log(`🔗 Fetching by-entity: ${byEntityUrl}`);
+        logger.log(`🔗 Fetching by-entity: ${byEntityUrl}`);
         
         const [tsResp, beResp, hmResp, kpiResp] = await Promise.all([
           fetch(`http://localhost:8000/v1/report/overview/time-series?granularity=${granularity}&period_months=${periodMonths}&product_group=${encodeURIComponent(productGroup)}&mode=${mode}`),
@@ -284,7 +285,7 @@ export default function SalesOverviewPage() {
         ]);
         
         // Update all state at once - only show final complete data
-        console.log(`✅ Data received: timeSeries=${Array.isArray(tsData) ? tsData.length : 0}, byEntity=${Array.isArray(beData) ? beData.length : 0}, KPIs=${kpiData ? 'ok' : 'null'}`);
+        logger.log(`✅ Data received: timeSeries=${Array.isArray(tsData) ? tsData.length : 0}, byEntity=${Array.isArray(beData) ? beData.length : 0}, KPIs=${kpiData ? 'ok' : 'null'}`);
         setOverviewSeries(Array.isArray(tsData) ? tsData : []);
         setOverviewByEntity(Array.isArray(beData) ? beData : []);
         setOverallKPIs(kpiData);
@@ -421,7 +422,7 @@ export default function SalesOverviewPage() {
                 <span className="text-sm text-gray-600 font-body">Entities:</span>
                 <Select value={entityLimit.toString()} onValueChange={(v) => { 
                   const n = parseInt(v, 10); 
-                  console.log(`🔄 Entities changed: ${entityLimit} -> ${n}`);
+                  logger.log(`🔄 Entities changed: ${entityLimit} -> ${n}`);
                   setEntityLimit(n);
                   setCurrentPage(1); // Reset to first page when limit changes
                 }}>

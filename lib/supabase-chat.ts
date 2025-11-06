@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logger } from "@/lib/logger";
 
 export interface ChatSession {
   id: string;
@@ -20,11 +21,11 @@ export interface ChatMessage {
 export async function createChatSession(userId: string, title: string = 'New Chat'): Promise<string | null> {
   try {
     if (!supabase) {
-      console.error('❌ Supabase client not initialized');
+      logger.error('❌ Supabase client not initialized');
       return null;
     }
     
-    console.log('🔧 Creating session for user:', userId);
+    logger.log('🔧 Creating session for user:', userId);
     
     const { data, error } = await supabase
       .from('sessions')
@@ -33,14 +34,14 @@ export async function createChatSession(userId: string, title: string = 'New Cha
       .single();
 
     if (error) {
-      console.error('❌ Error creating session:', error);
+      logger.error('❌ Error creating session:', error);
       return null;
     }
 
-    console.log('✅ Session created successfully:', data.id);
+    logger.log('✅ Session created successfully:', data.id);
     return data.id;
   } catch (error) {
-    console.error('❌ Exception creating session:', error);
+    logger.error('❌ Exception creating session:', error);
     return null;
   }
 }
@@ -49,11 +50,11 @@ export async function createChatSession(userId: string, title: string = 'New Cha
 export async function getUserSessions(userId: string): Promise<ChatSession[]> {
   try {
     if (!supabase) {
-      console.error('❌ Supabase client not initialized');
+      logger.error('❌ Supabase client not initialized');
       return [];
     }
     
-    console.log('🔍 Fetching sessions for user:', userId);
+    logger.log('🔍 Fetching sessions for user:', userId);
     
     const { data, error } = await supabase
       .from('sessions')
@@ -62,14 +63,14 @@ export async function getUserSessions(userId: string): Promise<ChatSession[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Error fetching sessions:', error);
+      logger.error('❌ Error fetching sessions:', error);
       return [];
     }
 
-    console.log('✅ Found sessions:', data?.length || 0, 'sessions');
+    logger.log('✅ Found sessions:', data?.length || 0, 'sessions');
     return data || [];
   } catch (error) {
-    console.error('❌ Exception fetching sessions:', error);
+    logger.error('❌ Exception fetching sessions:', error);
     return [];
   }
 }
@@ -78,23 +79,23 @@ export async function getUserSessions(userId: string): Promise<ChatSession[]> {
 export async function getSessionMessages(sessionId: string): Promise<ChatMessage[]> {
   try {
     if (!supabase) {
-      console.error('❌ Supabase client not initialized');
+      logger.error('❌ Supabase client not initialized');
       return [];
     }
     
-    console.log('🔍 getSessionMessages: Fetching messages for session:', sessionId);
-    console.log('🔍 getSessionMessages: Session ID type:', typeof sessionId);
-    console.log('🔍 getSessionMessages: Session ID length:', sessionId?.length);
+    logger.log('🔍 getSessionMessages: Fetching messages for session:', sessionId);
+    logger.log('🔍 getSessionMessages: Session ID type:', typeof sessionId);
+    logger.log('🔍 getSessionMessages: Session ID length:', sessionId?.length);
     
     // Check if sessionId is a valid UUID format (temporarily disabled for debugging)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(sessionId)) {
-      console.warn('⚠️ Session ID format warning:', sessionId, 'but continuing anyway...');
+      logger.warn('⚠️ Session ID format warning:', sessionId, 'but continuing anyway...');
       // return []; // Temporarily disabled
     }
     
     // First, let's check if the session exists
-    console.log('🔍 getSessionMessages: Checking if session exists...');
+    logger.log('🔍 getSessionMessages: Checking if session exists...');
     const { data: sessionCheck, error: sessionError } = await supabase
       .from('sessions')
       .select('id')
@@ -102,13 +103,13 @@ export async function getSessionMessages(sessionId: string): Promise<ChatMessage
       .single();
     
     if (sessionError) {
-      console.error('❌ Session check error:', sessionError);
+      logger.error('❌ Session check error:', sessionError);
     } else {
-      console.log('✅ Session exists:', sessionCheck);
+      logger.log('✅ Session exists:', sessionCheck);
     }
     
     // Now try to get messages
-    console.log('🔍 getSessionMessages: Fetching messages...');
+    logger.log('🔍 getSessionMessages: Fetching messages...');
     const { data, error } = await supabase
       .from('messages')
       .select('id, session_id, role, content, sources, created_at')
@@ -116,16 +117,16 @@ export async function getSessionMessages(sessionId: string): Promise<ChatMessage
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('❌ Error fetching messages:', error);
-      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      logger.error('❌ Error fetching messages:', error);
+      logger.error('❌ Error details:', JSON.stringify(error, null, 2));
       return [];
     }
 
-    console.log('✅ getSessionMessages: Found messages:', data?.length || 0);
-    console.log('✅ getSessionMessages: Raw messages data:', data);
+    logger.log('✅ getSessionMessages: Found messages:', data?.length || 0);
+    logger.log('✅ getSessionMessages: Raw messages data:', data);
     return data || [];
   } catch (error) {
-    console.error('❌ Exception fetching messages:', error);
+    logger.error('❌ Exception fetching messages:', error);
     return [];
   }
 }
@@ -139,11 +140,11 @@ export async function saveMessage(
 ): Promise<boolean> {
   try {
     if (!supabase) {
-      console.error('❌ Supabase client not initialized');
+      logger.error('❌ Supabase client not initialized');
       return false;
     }
     
-    console.log('💾 saveMessage: Saving message with sources:', sources);
+    logger.log('💾 saveMessage: Saving message with sources:', sources);
     
     const messageData: any = {
       session_id: sessionId,
@@ -161,14 +162,14 @@ export async function saveMessage(
       .insert(messageData);
 
     if (error) {
-      console.error('❌ Error saving message:', error);
+      logger.error('❌ Error saving message:', error);
       return false;
     }
 
-    console.log('✅ Message saved successfully with sources');
+    logger.log('✅ Message saved successfully with sources');
     return true;
   } catch (error) {
-    console.error('❌ Exception saving message:', error);
+    logger.error('❌ Exception saving message:', error);
     return false;
   }
 }
@@ -177,7 +178,7 @@ export async function saveMessage(
 export async function updateSessionTitle(sessionId: string, title: string): Promise<boolean> {
   try {
     if (!supabase) {
-      console.error('❌ Supabase client not initialized');
+      logger.error('❌ Supabase client not initialized');
       return false;
     }
     
@@ -187,13 +188,13 @@ export async function updateSessionTitle(sessionId: string, title: string): Prom
       .eq('id', sessionId);
 
     if (error) {
-      console.error('Error updating session title:', error);
+      logger.error('Error updating session title:', error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Error updating session title:', error);
+    logger.error('Error updating session title:', error);
     return false;
   }
 }
@@ -202,69 +203,69 @@ export async function updateSessionTitle(sessionId: string, title: string): Prom
 export async function deleteSession(sessionId: string): Promise<boolean> {
   try {
     if (!supabase) {
-      console.error('❌ Supabase client not initialized');
+      logger.error('❌ Supabase client not initialized');
       return false;
     }
     
-    console.log('🗑️ deleteSession: Starting deletion for session:', sessionId);
+    logger.log('🗑️ deleteSession: Starting deletion for session:', sessionId);
     
     // First delete all conversation contexts
-    console.log('🗑️ deleteSession: Deleting conversation contexts...');
+    logger.log('🗑️ deleteSession: Deleting conversation contexts...');
     const { error: contextsError } = await supabase
       .from('conversation_contexts')
       .delete()
       .eq('session_id', sessionId);
 
     if (contextsError) {
-      console.error('❌ Error deleting conversation contexts:', contextsError);
+      logger.error('❌ Error deleting conversation contexts:', contextsError);
       // Continue anyway - contexts table might not have entries
     } else {
-      console.log('✅ Conversation contexts deleted');
+      logger.log('✅ Conversation contexts deleted');
     }
     
     // Delete suggested questions for this session
-    console.log('🗑️ deleteSession: Deleting suggested questions...');
+    logger.log('🗑️ deleteSession: Deleting suggested questions...');
     const { error: questionsError } = await supabase
       .from('suggested_questions')
       .delete()
       .eq('session_id', sessionId);
 
     if (questionsError) {
-      console.error('❌ Error deleting suggested questions:', questionsError);
+      logger.error('❌ Error deleting suggested questions:', questionsError);
       // Continue anyway - questions table might not have entries
     } else {
-      console.log('✅ Suggested questions deleted');
+      logger.log('✅ Suggested questions deleted');
     }
     
     // Then delete all messages
-    console.log('🗑️ deleteSession: Deleting messages...');
+    logger.log('🗑️ deleteSession: Deleting messages...');
     const { error: messagesError } = await supabase
       .from('messages')
       .delete()
       .eq('session_id', sessionId);
 
     if (messagesError) {
-      console.error('❌ Error deleting messages:', messagesError);
+      logger.error('❌ Error deleting messages:', messagesError);
       return false;
     }
-    console.log('✅ Messages deleted');
+    logger.log('✅ Messages deleted');
 
     // Finally delete the session
-    console.log('🗑️ deleteSession: Deleting session...');
+    logger.log('🗑️ deleteSession: Deleting session...');
     const { error: sessionError } = await supabase
       .from('sessions')
       .delete()
       .eq('id', sessionId);
 
     if (sessionError) {
-      console.error('❌ Error deleting session:', sessionError);
+      logger.error('❌ Error deleting session:', sessionError);
       return false;
     }
 
-    console.log('✅ deleteSession: Session deleted successfully');
+    logger.log('✅ deleteSession: Session deleted successfully');
     return true;
   } catch (error) {
-    console.error('❌ Exception in deleteSession:', error);
+    logger.error('❌ Exception in deleteSession:', error);
     return false;
   }
 }
