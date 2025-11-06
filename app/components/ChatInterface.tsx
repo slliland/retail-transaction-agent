@@ -155,12 +155,11 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
             .eq('source_type', 'welcome')
             .is('session_id', null)
             .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+            .limit(1);
           
-          if (!cacheError && cachedQuestions && cachedQuestions.questions && cachedQuestions.questions.length > 0) {
+          if (!cacheError && cachedQuestions && cachedQuestions.length > 0 && cachedQuestions[0].questions && cachedQuestions[0].questions.length > 0) {
             logger.log('✅ ChatInterface: Using cached welcome questions from database');
-            setWelcomeQuestions(cachedQuestions.questions.slice(0, 4));
+            setWelcomeQuestions(cachedQuestions[0].questions.slice(0, 4));
             return;
           }
           
@@ -252,15 +251,15 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
                  // Create or update user profile
                  await createOrUpdateProfile(user);
                  
-                 if (conversationId) {
-                   logger.log('🔍 ChatInterface: Loading existing conversation:', conversationId);
-                   logger.log('🔍 ChatInterface: conversationId type:', typeof conversationId);
-                   logger.log('🔍 ChatInterface: conversationId length:', conversationId?.length);
-                   
-                   // Load existing conversation from Supabase
-                   const dbMessages = await getSessionMessages(conversationId);
-                   logger.log('📋 ChatInterface: Loaded messages:', dbMessages.length);
-                   logger.log('📋 ChatInterface: Raw messages data:', dbMessages);
+                if (conversationId && !conversationId.startsWith('temp_')) {
+                  logger.log('🔍 ChatInterface: Loading existing conversation:', conversationId);
+                  logger.log('🔍 ChatInterface: conversationId type:', typeof conversationId);
+                  logger.log('🔍 ChatInterface: conversationId length:', conversationId?.length);
+                  
+                  // Load existing conversation from Supabase
+                  const dbMessages = await getSessionMessages(conversationId);
+                  logger.log('📋 ChatInterface: Loaded messages:', dbMessages.length);
+                  logger.log('📋 ChatInterface: Raw messages data:', dbMessages);
                    
                    if (dbMessages.length > 0) {
                      const formattedMessages = dbMessages.map((msg: ChatMessage) => {
