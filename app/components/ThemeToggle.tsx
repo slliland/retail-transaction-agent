@@ -63,7 +63,7 @@ export default function ThemeToggle() {
     }, 280);
   };
 
-  if (!mounted) return <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />;
+  if (!mounted) return <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 animate-pulse" />;
 
   const themes: Array<{ value: Theme; icon: typeof Sun; label: string; color: string }> = [
     { value: "light", icon: Sun, label: "Light", color: "text-yellow-500" },
@@ -81,11 +81,11 @@ export default function ThemeToggle() {
       onMouseLeave={handleMouseLeave}
     >
       <div
-        className={`flex items-center bg-gray-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full shadow-sm hover:shadow-md transition-all ease-out ${isExpanded ? 'gap-1 p-1 pr-1' : 'gap-0 p-0'}`}
+        className={`flex items-center bg-gray-100/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full shadow-sm hover:shadow-md transition-all ease-out ${isExpanded ? 'gap-1 p-1' : 'gap-0 p-0'}`}
         style={{ 
           width: isExpanded ? 'auto' : '32px', 
           height: '32px',
-          transitionDuration: isLeaving ? '280ms' : '320ms'
+          transitionDuration: isLeaving ? '240ms' : '280ms'
         }}
       >
         {themes.map(({ value, icon: Icon, label, color }, index) => {
@@ -101,9 +101,9 @@ export default function ThemeToggle() {
               onClick={() => handleThemeChange(value)}
               className={`flex items-center justify-center rounded-full transition-all ${
                 isActive
-                  ? `${color} ${isExpanded ? 'bg-white dark:bg-slate-700 shadow-md w-8 h-8 sm:w-10 sm:h-10' : 'w-8 h-8 sm:w-10 sm:h-10'}`
+                  ? `${color} ${isExpanded ? 'bg-white dark:bg-slate-700 shadow-md w-8 h-8' : 'w-8 h-8'}`
                   : `text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-slate-700/50 ${
-                      isVisible ? 'w-8 h-8 sm:w-10 sm:h-10 opacity-100' : 'w-0 h-8 sm:h-10 opacity-0'
+                      isVisible ? 'w-8 h-8 opacity-100' : 'w-0 h-8 opacity-0'
                     }`
               }`}
               style={{

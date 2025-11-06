@@ -153,9 +153,9 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
           </div>
 
           {/* Card Content with backdrop blur and transparency */}
-          <div className="h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-t-[30px] px-8 pb-12 overflow-y-auto">
-            <div className="max-w-md mx-auto space-y-6 pt-12">
-              <h2 className="text-3xl font-zapfino text-center mb-2">Sign Up</h2>
+          <div className="h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-t-[30px] px-4 sm:px-8 pb-12 overflow-y-auto">
+            <div className="max-w-md mx-auto space-y-4 sm:space-y-6 pt-8 sm:pt-12">
+              <h2 className="text-2xl sm:text-3xl font-zapfino text-center mb-2">Sign Up</h2>
               
               <input
                 type="email"
@@ -248,9 +248,9 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
           </div>
 
           {/* Card Content with backdrop blur and transparency */}
-          <div className="h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-t-[30px] px-8 pb-12 overflow-y-auto">
-            <div className="max-w-md mx-auto space-y-6 pt-12">
-              <h2 className="text-3xl font-zapfino text-center mb-2">Sign In</h2>
+          <div className="h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-t-[30px] px-4 sm:px-8 pb-12 overflow-y-auto">
+            <div className="max-w-md mx-auto space-y-4 sm:space-y-6 pt-8 sm:pt-12">
+              <h2 className="text-2xl sm:text-3xl font-zapfino text-center mb-2">Sign In</h2>
               
               {/* Social Login Buttons */}
               <button 
@@ -353,9 +353,9 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
 
       {/* Animated Title */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
         <h1 
-          className="text-6xl font-zapfino text-white tracking-wider animate-fade-in"
+          className="text-4xl sm:text-5xl md:text-6xl font-zapfino text-white tracking-wider animate-fade-in"
           style={{
             textShadow: "0 10px 50px rgba(0,0,0,0.9)",
             animation: "fadeIn 1s ease-out 0.5s both"
@@ -366,8 +366,8 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
       </div>
 
       {/* Bouncing Arrow */}
-      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 animate-bounce pointer-events-none">
-        <ChevronDown className="w-8 h-8 text-white/70" />
+      <div className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 animate-bounce pointer-events-none">
+        <ChevronDown className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
       </div>
 
       {/* Draggable Card */}

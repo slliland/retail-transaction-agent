@@ -448,7 +448,7 @@ export default function SettingsPage() {
           {/* Profile Header with Sky-to-Ocean Background */}
           <div className="relative">
             {/* Combined Background Layer: White Sky + Wave Ocean */}
-            <div className="relative overflow-hidden" style={{ height: "450px" }}>
+            <div className="relative overflow-hidden" style={{ height: "350px" }}>
               {/* Background Layer */}
               <div className="absolute inset-0">
                 {/* Top: White/Frosted Sky Area */}
@@ -621,13 +621,13 @@ export default function SettingsPage() {
                 </div>
 
                 {/* User Name */}
-                <h2 className="text-2xl font-title text-gray-900 mb-5 pb-1 drop-shadow-sm">
+                <h2 className="text-xl sm:text-2xl font-title text-gray-900 mb-4 sm:mb-5 pb-1 drop-shadow-sm px-4 text-center">
                   {userName}
                 </h2>
 
                 {/* User Email */}
                 {userEmail && (
-                  <p className="text-base font-body text-gray-700 drop-shadow-sm mb-5">
+                  <p className="text-sm sm:text-base font-body text-gray-700 drop-shadow-sm mb-4 sm:mb-5 px-4 text-center break-all">
                     {userEmail}
                   </p>
                 )}
@@ -645,7 +645,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Email Management Section - Envelope Design */}
-          <div className="max-w-2xl mx-auto px-6 py-8">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
             {/* Envelope Container */}
             <div className="relative">
               {/* Envelope Body - Elegant theme colors */}
@@ -911,10 +911,10 @@ export default function SettingsPage() {
                           return (
                             <div
                               key={idx}
-                              className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-200 dark:border-slate-600 flex items-center justify-between"
+                              className="p-3 sm:p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-200 dark:border-slate-600 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
                             >
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900 dark:text-white font-body">
+                              <div className="flex-1 w-full sm:w-auto">
+                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white font-body">
                                   {periodLabel}: {new Date(summary.period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(summary.period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 font-body mt-1">
@@ -924,7 +924,7 @@ export default function SettingsPage() {
                               <Button
                                 onClick={() => handleSendEmail(summary)}
                                 disabled={isSending || (!useCustomEmail && !isSubscribed)}
-                                className="flex items-center gap-2 bg-gray-800 dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 text-white font-body"
+                                className="flex items-center gap-2 bg-gray-800 dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 text-white font-body w-full sm:w-auto justify-center"
                                 size="sm"
                               >
                                 {isSending ? (

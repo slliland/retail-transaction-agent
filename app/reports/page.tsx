@@ -582,8 +582,8 @@ export default function ReportGeneratorPage() {
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-48">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="w-full sm:w-48">
                         <label className="block text-sm font-medium mb-2">Analysis Period</label>
                         <Select 
                           value={periodMonths.toString()} 
