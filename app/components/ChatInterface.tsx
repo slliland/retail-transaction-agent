@@ -191,7 +191,8 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       
       // Fallback: use generic questions if no summaries or error
       console.log('💡 ChatInterface: Using generic welcome questions');
-      const response = await axios.get('/api/data?action=suggestions');
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const response = await axios.get(`${backendUrl}/v1/suggested-questions`);
       
       const questions = Array.isArray(response.data) ? response.data : (response.data?.questions || []);
       
@@ -443,6 +444,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       }, 500);
 
       // Prepare request with files if any
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
       let response;
       if (filesToSend.length > 0) {
         // Use FormData to send files
@@ -458,14 +460,14 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
           formData.append('files', file);
         });
         
-        response = await axios.post('/api/chat', formData, {
+        response = await axios.post(`${backendUrl}/v1/ask`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
       } else {
         // Regular JSON request for text-only messages
-        response = await axios.post('/api/chat', {
+        response = await axios.post(`${backendUrl}/v1/ask`, {
           message: textToSend,
           conversationHistory: messages.slice(-5) // Send last 5 messages for context
         });
@@ -656,6 +658,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       setLoadingInChatSuggestions(true);
       console.log('💡 ChatInterface: Fetching cached suggested questions...');
       
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
       const lastUserMessage = messages.filter(msg => msg.role === 'user').slice(-1)[0]?.content || '';
       const currentSessionId = conversationId || sessionId;
       
@@ -668,7 +671,6 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       const contextHash = lastUserMessage.substring(0, 200);
       
       // Try to get cached suggestions from database
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
       try {
         const cachedResponse = await axios.get(`${backendUrl}/v1/get-cached-suggestions`, {
           params: {
@@ -695,8 +697,8 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       // If no cache, generate new questions
       console.log('💡 ChatInterface: No cache found, generating new suggested questions...');
       const url = lastUserMessage 
-        ? `/api/data?action=suggestions&user_message=${encodeURIComponent(lastUserMessage)}`
-        : '/api/data?action=suggestions';
+        ? `${backendUrl}/v1/suggested-questions?user_message=${encodeURIComponent(lastUserMessage)}`
+        : `${backendUrl}/v1/suggested-questions`;
       
       const response = await axios.get(url);
       
