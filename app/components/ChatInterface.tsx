@@ -513,9 +513,9 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
             i === lastAssistantIndex 
               ? {
                   ...msg,
-                  content: response.data.response,
-                  sources: response.data.contextSources > 0 ? [`${response.data.contextSources} data sources used`] : undefined,
-                  progressSteps: response.data.progressSteps || [],
+                  content: response.data.answer,
+                  sources: response.data.sources || [],
+                  progressSteps: response.data.progress_steps || [],
                   isTyping: true,
                 }
               : msg
@@ -526,9 +526,9 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
           i === assistantMessageIndex && msg.role === "assistant"
             ? {
                 ...msg,
-                content: response.data.response,
-                sources: response.data.contextSources > 0 ? [`${response.data.contextSources} data sources used`] : undefined,
-                progressSteps: response.data.progressSteps || [],
+                content: response.data.answer,
+                sources: response.data.sources || [],
+                progressSteps: response.data.progress_steps || [],
                 isTyping: true,
               }
             : msg
@@ -537,7 +537,7 @@ export default function ChatInterface({ onMenuClick, onTitleGenerated, onSession
       
       // Save assistant message to Supabase
       if (currentSessionId) {
-        await saveMessage(currentSessionId, 'assistant', response.data.response, assistantMessage.sources);
+        await saveMessage(currentSessionId, 'assistant', response.data.answer, response.data.sources);
       }
       
       // Generate title from first user message (only for new sessions)
