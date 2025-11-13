@@ -19,6 +19,8 @@ import { useEntityFetcher } from '@/lib/useEntityFetcher';
 import { getUserSessions, type ChatSession } from '@/lib/supabase-chat';
 import { useUser } from '@/app/contexts/UserContext';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface EntityKPI {
   entity_id: string;
   total_sales: number;
@@ -202,7 +204,7 @@ export default function ReportGeneratorPage() {
 
     setLoading(true);
     try {
-      const url = `http://localhost:8000/v1/report/report/${selectedEntity}?period_months=${periodMonths}`;
+      const url = `${API_BASE_URL}/v1/report/report/${selectedEntity}?period_months=${periodMonths}`;
       logger.log('📊 Generating report for entity:', selectedEntity, 'with period_months:', periodMonths);
       logger.log('📡 Request URL:', url);
       const response = await fetch(url);
@@ -443,7 +445,7 @@ export default function ReportGeneratorPage() {
     
     try {
       const response = await fetch(
-        `http://localhost:8000/v1/report/download-pdf/${report.entity_id}?period_months=${periodMonths}`
+        `${API_BASE_URL}/v1/report/download-pdf/${report.entity_id}?period_months=${periodMonths}`
       );
       
       if (!response.ok) {

@@ -18,6 +18,8 @@ import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface Message {
   id: number;
   created_at: string;
@@ -285,7 +287,7 @@ export default function SpotlightPage() {
 
     // Test backend connection first
     try {
-      const healthCheck = await fetch('http://localhost:8000/health', { 
+      const healthCheck = await fetch(`${API_BASE_URL}/health`, { 
         method: 'GET',
         signal: AbortSignal.timeout(5000) // 5 second timeout for health check
       });
@@ -375,7 +377,7 @@ export default function SpotlightPage() {
 
         let response;
         try {
-          response = await fetch('http://localhost:8000/v1/chat-summary', {
+          response = await fetch(`${API_BASE_URL}/v1/chat-summary`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -444,7 +446,7 @@ export default function SpotlightPage() {
         setSummaries(prev => {
           const newMap = new Map(prev);
           newMap.set(periodKey, {
-            summary: `Error: ${errorMessage}. Please ensure the backend is running at http://localhost:8000`,
+            summary: `Error: ${errorMessage}. Please ensure the backend is running at ${API_BASE_URL}`,
             cached: false,
             loading: false
           });
@@ -638,7 +640,7 @@ export default function SpotlightPage() {
       }
       
       // Call backend TTS endpoint
-      const response = await fetch('http://localhost:8000/v1/text-to-speech', {
+      const response = await fetch(`${API_BASE_URL}/v1/text-to-speech`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

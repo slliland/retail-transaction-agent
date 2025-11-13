@@ -14,6 +14,8 @@ import { getUserSessions, type ChatSession } from "@/lib/supabase-chat";
 import { useUser } from "@/app/contexts/UserContext";
 import Notification, { useNotifications } from "../components/Notification";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function SettingsPage() {
   const router = useRouter();
   const { userEmail: contextUserEmail, avatarUrl: contextAvatarUrl, userId: contextUserId } = useUser();
@@ -263,7 +265,7 @@ export default function SettingsPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
       
-      const response = await fetch(`http://localhost:8000/v1/email-subscription?user_id=${uid}`, {
+      const response = await fetch(`${API_BASE_URL}/v1/email-subscription?user_id=${uid}`, {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -304,7 +306,7 @@ export default function SettingsPage() {
   const loadAvailableSummaries = async (uid: string) => {
     try {
       setSummariesLoading(true);
-      const response = await fetch(`http://localhost:8000/v1/chat-summaries/list?user_id=${uid}`);
+      const response = await fetch(`${API_BASE_URL}/v1/chat-summaries/list?user_id=${uid}`);
       if (response.ok) {
         const data = await response.json();
         setAvailableSummaries(data.summaries || []);
@@ -330,7 +332,7 @@ export default function SettingsPage() {
     setSendingEmail(summaryKey);
     
     try {
-      const response = await fetch('http://localhost:8000/v1/send-spotlight-email', {
+      const response = await fetch(`${API_BASE_URL}/v1/send-spotlight-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -365,7 +367,7 @@ export default function SettingsPage() {
     
     setSubscriptionLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/v1/email-subscription', {
+      const response = await fetch(`${API_BASE_URL}/v1/email-subscription`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

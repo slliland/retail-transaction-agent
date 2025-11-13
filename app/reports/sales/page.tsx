@@ -15,6 +15,8 @@ import { supabase, getCurrentUser } from '@/lib/supabase';
 import { getUserSessions, type ChatSession } from '@/lib/supabase-chat';
 import { useUser } from '@/app/contexts/UserContext';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface TimeSeriesPoint {
   period: string;
   total_sales: number;
@@ -260,14 +262,14 @@ export default function SalesOverviewPage() {
       
       try {
         // Fetch all data in parallel for speed
-        const byEntityUrl = `http://localhost:8000/v1/report/overview/by-entity?period_months=${periodMonths}&limit=${entityLimit}&product_group=${encodeURIComponent(productGroup)}`;
+        const byEntityUrl = `${API_BASE_URL}/v1/report/overview/by-entity?period_months=${periodMonths}&limit=${entityLimit}&product_group=${encodeURIComponent(productGroup)}`;
         logger.log(`🔗 Fetching by-entity: ${byEntityUrl}`);
         
         const [tsResp, beResp, hmResp, kpiResp] = await Promise.all([
-          fetch(`http://localhost:8000/v1/report/overview/time-series?granularity=${granularity}&period_months=${periodMonths}&product_group=${encodeURIComponent(productGroup)}&mode=${mode}`),
+          fetch(`${API_BASE_URL}/v1/report/overview/time-series?granularity=${granularity}&period_months=${periodMonths}&product_group=${encodeURIComponent(productGroup)}&mode=${mode}`),
           fetch(byEntityUrl),
-          fetch(`http://localhost:8000/v1/report/overview/heatmap?period_months=${periodMonths}`),
-          fetch(`http://localhost:8000/v1/report/overview/kpis?period_months=${periodMonths}&product_group=${encodeURIComponent(productGroup)}&entity_limit=${entityLimit}`)
+          fetch(`${API_BASE_URL}/v1/report/overview/heatmap?period_months=${periodMonths}`),
+          fetch(`${API_BASE_URL}/v1/report/overview/kpis?period_months=${periodMonths}&product_group=${encodeURIComponent(productGroup)}&entity_limit=${entityLimit}`)
         ]);
         
         // Check all responses
