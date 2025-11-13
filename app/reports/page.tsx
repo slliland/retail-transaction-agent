@@ -509,7 +509,7 @@ export default function ReportGeneratorPage() {
                   Report Generator
                 </h1>
                 <p className="text-lg text-gray-600 dark:text-gray-400 font-body mt-2">
-                  Your weekly and monthly chat history with the retail agent
+                  Generate comprehensive analytics reports for retail entities and analyze transaction data
                 </p>
               </div>
               <Button 
