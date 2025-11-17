@@ -1,8 +1,8 @@
-# 🛒 Retail Assistant Web
+# Retail Assistant Web
 
 A modern Next.js frontend for the Retail Transaction Knowledge Base, providing an intuitive chat interface for analyzing retail transaction data with AI-powered insights.
 
-## 🌟 Features
+## Features
 
 - **AI-Powered Chat Interface**: Interactive chat with the retail transaction knowledge base
 - **Real-time Analytics**: Get instant insights from your retail data
@@ -11,7 +11,7 @@ A modern Next.js frontend for the Retail Transaction Knowledge Base, providing a
 - **Source Attribution**: See which data sources inform each response
 - **Suggested Questions**: Get relevant follow-up questions
 
-## 🏗️ Architecture
+## Architecture
 
 ### Frontend Components
 - **ChatInterface**: Main chat component with AI integration
@@ -25,7 +25,7 @@ A modern Next.js frontend for the Retail Transaction Knowledge Base, providing a
 - **Validation System**: Multi-layer response validation
 - **Data Processing**: Intelligent chunking and embedding
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Setup Integration
 ```bash
@@ -70,28 +70,13 @@ The system expects retail transaction data with these columns:
 ### Health API
 - `GET /api/health` - System health check
 
-## 💬 Sample Queries
+## Sample Queries
 
 - "What are the top performing product groups by sales volume?"
 - "Which entities have the highest sales in the most recent period?"
 - "How do single-location stores compare to multi-location chains?"
 - "What is the average sales volume per transaction for each product group?"
 - "Which entities have the most diverse product offerings?"
-
-## 🛠️ Development
-
-### Project Structure
-```
-retail-assistant-web/
-├── app/
-│   ├── api/           # API routes
-│   ├── components/    # React components
-│   ├── chat/         # Chat page
-│   ├── reports/      # Reports page
-│   └── settings/     # Settings page
-├── lib/              # Utility libraries
-└── public/           # Static assets
-```
 
 ### Key Components
 
@@ -116,7 +101,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
 OPENAI_API_KEY=your_openai_key
 ```
 
-## 🔄 Backend Integration
+## Backend Integration
 
 The frontend connects to the Python backend through:
 
@@ -131,7 +116,7 @@ The frontend connects to the Python backend through:
 - OpenAI API key
 - Retail transaction data in parquet format
 
-## 📱 User Interface
+## User Interface
 
 ### Chat Interface
 - **Message History**: Scrollable conversation history
@@ -152,7 +137,7 @@ The frontend connects to the Python backend through:
 - Touch-friendly interface
 - Keyboard shortcuts
 
-## 🚀 Deployment
+## Deployment
 
 ### Development
 ```bash
@@ -171,7 +156,7 @@ docker build -t retail-assistant-web .
 docker run -p 4000:4000 retail-assistant-web
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -196,7 +181,7 @@ docker run -p 4000:4000 retail-assistant-web
 DEBUG=* npm run dev
 ```
 
-## 📈 Performance
+## Performance
 
 ### Optimization Features
 - **Caching**: API responses cached for performance
@@ -209,27 +194,3 @@ DEBUG=* npm run dev
 - Error logging
 - Performance metrics
 - User analytics
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For questions and support:
-1. Check the troubleshooting section
-2. Review the API documentation
-3. Open an issue on GitHub
-4. Contact the development team
-
----
-
-**Built with ❤️ for retail analytics**
