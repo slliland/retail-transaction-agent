@@ -13,7 +13,6 @@ dist/
 *.log
 
 # Environment
-.env
 .env*.local
 !.env.example
 .env.development.local
@@ -43,3 +42,4 @@ coverage/
 .eslintcache
 .cache/
 docs
+config.bat

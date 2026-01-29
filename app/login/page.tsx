@@ -11,11 +11,6 @@ export default function LoginPage() {
     router.push("/chat");
   };
 
-  const handleSignUp = (email: string, password: string) => {
-    localStorage.setItem("userEmail", email);
-    router.push("/chat");
-  };
-
-  return <WelcomeScreen onLogin={handleLogin} onSignUp={handleSignUp} />;
+  return <WelcomeScreen onLogin={handleLogin} />;
 }
 
