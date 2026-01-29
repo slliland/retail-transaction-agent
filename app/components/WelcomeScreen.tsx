@@ -2,20 +2,17 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Sparkles, ChevronDown } from "lucide-react";
-import { signInWithGitHub, signInWithGoogle, signInWithEmail, signUpWithEmail } from "@/lib/supabase";
+import { signInWithGitHub, signInWithGoogle, signInWithEmail } from "@/lib/supabase";
 
 interface WelcomeScreenProps {
   onLogin: (email: string, password: string) => void;
-  onSignUp: (email: string, password: string) => void;
 }
 
-export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps) {
+export default function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   const [showCard, setShowCard] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [cardHeight, setCardHeight] = useState(35); // Percentage from bottom
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,23 +58,6 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
     }
   };
 
-  // Email signup handler
-  const handleEmailSignUp = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      if (password !== confirmPassword) {
-        setError("Passwords don't match");
-        return;
-      }
-      await signUpWithEmail(email, password);
-      onSignUp(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign up');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Handle drag start
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -121,101 +101,6 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
     };
   }, [isDragging]);
 
-  if (showSignUp) {
-    return (
-      <div className="fixed inset-0 overflow-hidden">
-        {/* Full-screen Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: "url('https://images.unsplash.com/photo-1632030163062-5308eb363214?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"
-          }}
-        />
-        
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
-
-        {/* Draggable Card */}
-        <div 
-          className="absolute left-0 right-0 transition-all duration-200"
-          style={{ 
-            bottom: 0,
-            height: `${cardHeight}%`
-          }}
-        >
-          {/* Drag Handle */}
-          <div 
-            className="w-full py-3 cursor-grab active:cursor-grabbing flex justify-center"
-            onMouseDown={handleDragStart}
-            onTouchStart={handleDragStart}
-          >
-            <div className="w-12 h-1.5 bg-gray-400/50 rounded-full" />
-          </div>
-
-          {/* Card Content with backdrop blur and transparency */}
-          <div className="h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-t-[30px] px-4 sm:px-8 pb-12 overflow-y-auto">
-            <div className="max-w-md mx-auto space-y-4 sm:space-y-6 pt-8 sm:pt-12">
-              <h2 className="text-2xl sm:text-3xl font-zapfino text-center mb-2">Sign Up</h2>
-              
-              <input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-100 dark:bg-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-100 dark:bg-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-              />
-              <input
-                type="password"
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-100 dark:bg-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
-              />
-              
-              <button
-                onClick={handleEmailSignUp}
-                disabled={isLoading || !email || !password || !confirmPassword}
-                className="w-full py-4 bg-black text-white rounded-full text-lg font-caslon font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
-              >
-                {isLoading ? 'Signing up...' : 'Sign Up'}
-              </button>
-              
-              {error && (
-                <p className="text-center text-sm text-red-600 dark:text-red-400">
-                  {error}
-                </p>
-              )}
-              
-              <p className="text-center text-sm font-caslon text-gray-600 dark:text-gray-400 pt-4">
-                Already have an account?{" "}
-                <button onClick={() => { setShowSignUp(false); setShowLogin(true); }} className="text-black dark:text-white font-bold">
-                  Sign In
-                </button>
-              </p>
-            </div>
-
-            {/* Back Button */}
-            <button
-              onClick={() => setShowSignUp(false)}
-              className="absolute top-6 left-6 p-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-full shadow-lg z-20 hover:bg-white dark:hover:bg-slate-700 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (showLogin) {
     return (
       <div className="fixed inset-0 overflow-hidden">
@@ -250,7 +135,7 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
           {/* Card Content with backdrop blur and transparency */}
           <div className="h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-t-[30px] px-4 sm:px-8 pb-12 overflow-y-auto">
             <div className="max-w-md mx-auto space-y-4 sm:space-y-6 pt-8 sm:pt-12">
-              <h2 className="text-2xl sm:text-3xl font-zapfino text-center mb-2">Sign In</h2>
+              <h2 className="text-2xl sm:text-3xl font-zapfino text-center mb-8">Sign In</h2>
               
               {/* Social Login Buttons */}
               <button 
@@ -314,13 +199,6 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
                   {error}
                 </p>
               )}
-              
-              <p className="text-center text-sm font-caslon text-gray-600 dark:text-gray-400 pt-4">
-                Don't have an account?{" "}
-                <button onClick={() => { setShowLogin(false); setShowSignUp(true); }} className="text-black dark:text-white font-bold">
-                  Sign Up
-                </button>
-              </p>
             </div>
 
             {/* Back Button */}
@@ -394,21 +272,11 @@ export default function WelcomeScreen({ onLogin, onSignUp }: WelcomeScreenProps)
               onClick={() => setShowLogin(true)}
               className="w-full py-4 bg-black text-white rounded-full text-lg font-caslon font-semibold hover:bg-gray-800 transition-all shadow-md"
             >
-              Sign In
-            </button>
-            
-            <button
-              onClick={() => setShowSignUp(true)}
-              className="w-full py-4 bg-transparent border-2 border-black text-black dark:text-white dark:border-white rounded-full text-lg font-caslon font-semibold hover:bg-black/10 dark:hover:bg-white/10 transition-all"
-            >
-              Sign Up
+              Get Started
             </button>
             
             <p className="text-center text-sm font-caslon text-gray-600 dark:text-gray-400 pt-4">
-              New around here?{" "}
-              <button onClick={() => setShowSignUp(true)} className="text-black dark:text-white font-bold">
-                Create an account
-              </button>
+              Sign in to access your retail analytics assistant
             </p>
           </div>
         </div>

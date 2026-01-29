@@ -70,25 +70,6 @@ export const signInWithEmail = async (email: string, password: string) => {
   return data
 }
 
-// Email/Password signup
-export const signUpWithEmail = async (email: string, password: string) => {
-  if (!supabase) {
-    throw new Error('Supabase is not configured. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your .env.local file.')
-  }
-  
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  })
-  
-  if (error) {
-    logger.error('Email signup error:', error)
-    throw error
-  }
-  
-  return data
-}
-
 // Sign out
 export const signOut = async () => {
   if (!supabase) {
